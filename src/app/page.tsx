@@ -133,15 +133,59 @@ export default function Home() {
 
   // Meta Ads State
   const [pageName, setPageName] = useState('');
+  const [instagramAccount, setInstagramAccount] = useState('');
+  const [pageImageUrl, setPageImageUrl] = useState('');
+
+  // Primary Text variations (up to 5)
+  const [primaryTexts, setPrimaryTexts] = useState<string[]>(Array(5).fill(''));
+  const [visiblePrimaryTexts, setVisiblePrimaryTexts] = useState(2);
+
+  // Headline variations (up to 5)
+  const [metaHeadlines, setMetaHeadlines] = useState<string[]>(Array(5).fill(''));
+  const [visibleMetaHeadlines, setVisibleMetaHeadlines] = useState(2);
+
+  // Description
+  const [metaDescription, setMetaDescription] = useState('');
+
+  // Legacy single fields (for backward compatibility)
   const [username, setUsername] = useState('');
   const [primaryText, setPrimaryText] = useState('');
   const [headline, setHeadline] = useState('');
   const [description, setDescription] = useState('');
   const [caption, setCaption] = useState('');
+
+  // Media
+  const [metaMediaUrls, setMetaMediaUrls] = useState<string[]>(['', '', '', '']);
   const [metaImageUrl, setMetaImageUrl] = useState('');
+
+  // CTA and Destination
   const [metaCtaText, setMetaCtaText] = useState('Learn More');
+  const [metaDestinationUrl, setMetaDestinationUrl] = useState('');
   const [linkDisplay, setLinkDisplay] = useState('');
-  const [pageImageUrl, setPageImageUrl] = useState('');
+
+  // Expanded sections for Meta
+  const [metaExpandedSections, setMetaExpandedSections] = useState<Record<string, boolean>>({
+    identity: true,
+    media: true,
+    primaryText: true,
+    headlines: false,
+    description: false,
+    destination: false,
+  });
+
+  const toggleMetaSection = (section: string) => {
+    setMetaExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Meta CTA Options (30+ options based on objective)
+  const metaCtaOptions = [
+    'Learn More', 'Shop Now', 'Sign Up', 'Download', 'Contact Us',
+    'Apply Now', 'Book Now', 'Buy Tickets', 'Call Now', 'Donate Now',
+    'Get Offer', 'Get Directions', 'Get Quote', 'Get Showtimes', 'Install Now',
+    'Listen Now', 'Order Now', 'Play Game', 'Request Time', 'See Menu',
+    'Send Message', 'Send WhatsApp Message', 'Subscribe', 'Watch More', 'Use App',
+    'Open Link', 'Save', 'Start Order', 'View Event', 'Vote Now'
+  ];
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {
@@ -934,284 +978,323 @@ export default function Home() {
   };
 
   const renderMetaEditor = () => {
-    switch (metaAdType) {
-      case 'fb-feed':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Page Name</label>
-              <input
-                type="text"
-                value={pageName}
-                onChange={(e) => setPageName(e.target.value)}
-                placeholder="Your Page"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
+    // Unified Meta Ads editor matching real Ads Manager interface
+    return (
+      <div className="space-y-0 divide-y divide-gray-200">
+        {/* Ad Identity Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('identity')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.identity ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Identity</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Primary Text</label>
-              <textarea
-                value={primaryText}
-                onChange={(e) => setPrimaryText(e.target.value)}
-                placeholder="Your main message..."
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Headline</label>
-              <input
-                type="text"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                placeholder="Your headline"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Link description"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <ImageUpload
-              label="Ad Image (1:1 or 1.91:1)"
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              aspectRatio="1:1"
-            />
-            <div className="grid grid-cols-2 gap-4">
+          </button>
+          {metaExpandedSections.identity && (
+            <div className="mt-4 pl-7 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {pageImageUrl ? (
+                    <img src={pageImageUrl} alt="Page" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Facebook Page</label>
+                  <input
+                    type="text"
+                    value={pageName}
+                    onChange={(e) => setPageName(e.target.value)}
+                    placeholder="Your Page Name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Display Link</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram Account (optional)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">@</span>
+                  <input
+                    type="text"
+                    value={instagramAccount}
+                    onChange={(e) => setInstagramAccount(e.target.value)}
+                    placeholder="instagram_username"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Profile Image</label>
+                <ImageUpload
+                  label=""
+                  value={pageImageUrl}
+                  onChange={setPageImageUrl}
+                  aspectRatio="1:1"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Media Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('media')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.media ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Media</span>
+            </div>
+            <span className="text-xs text-gray-500">{metaMediaUrls.filter(u => u).length}/4 added</span>
+          </button>
+          {metaExpandedSections.media && (
+            <div className="mt-4 pl-7">
+              <p className="text-xs text-gray-500 mb-3">
+                Add images or videos. Recommended: 1:1 for Feed, 9:16 for Stories/Reels
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {metaMediaUrls.map((url, i) => (
+                  <ImageUpload
+                    key={i}
+                    label={`Media ${i + 1}`}
+                    value={url}
+                    onChange={(newUrl) => {
+                      const newUrls = [...metaMediaUrls];
+                      newUrls[i] = newUrl;
+                      setMetaMediaUrls(newUrls);
+                      if (i === 0) setMetaImageUrl(newUrl);
+                    }}
+                    aspectRatio={metaAdType.includes('stories') || metaAdType.includes('reels') ? '9:16' : '1:1'}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Primary Text Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('primaryText')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.primaryText ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Primary text</span>
+            </div>
+            <span className="text-xs text-gray-500">{primaryTexts.filter(t => t.trim()).length}/5 added</span>
+          </button>
+          {metaExpandedSections.primaryText && (
+            <div className="mt-4 pl-7 space-y-3">
+              <p className="text-xs text-gray-500">125 characters recommended. Add up to 5 text options for testing.</p>
+              {primaryTexts.slice(0, visiblePrimaryTexts).map((text, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm text-gray-400 w-5 pt-2">{i + 1}</span>
+                    <textarea
+                      value={text}
+                      onChange={(e) => {
+                        const newTexts = [...primaryTexts];
+                        newTexts[i] = e.target.value;
+                        setPrimaryTexts(newTexts);
+                        if (i === 0) setPrimaryText(e.target.value);
+                      }}
+                      placeholder={`Primary text ${i + 1}${i === 0 ? ' *' : ''}`}
+                      rows={3}
+                      className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                        i === 0 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                      }`}
+                    />
+                  </div>
+                  <div className="text-right text-xs text-gray-400 pr-1">
+                    {text.length} characters {text.length > 125 && <span className="text-orange-500">(truncated after 125)</span>}
+                  </div>
+                </div>
+              ))}
+              {visiblePrimaryTexts < 5 && (
+                <button
+                  onClick={() => setVisiblePrimaryTexts(Math.min(visiblePrimaryTexts + 1, 5))}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add another primary text option
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Headlines Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('headlines')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.headlines ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Headlines</span>
+            </div>
+            <span className="text-xs text-gray-500">{metaHeadlines.filter(h => h.trim()).length}/5 added</span>
+          </button>
+          {metaExpandedSections.headlines && (
+            <div className="mt-4 pl-7 space-y-3">
+              <p className="text-xs text-gray-500">40 characters recommended. Add up to 5 headline options.</p>
+              {metaHeadlines.slice(0, visibleMetaHeadlines).map((h, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400 w-5">{i + 1}</span>
+                  <input
+                    type="text"
+                    value={h}
+                    onChange={(e) => {
+                      const newHeadlines = [...metaHeadlines];
+                      newHeadlines[i] = e.target.value;
+                      setMetaHeadlines(newHeadlines);
+                      if (i === 0) setHeadline(e.target.value);
+                    }}
+                    placeholder={`Headline ${i + 1}`}
+                    className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="text-xs text-gray-400 w-10 text-right">{h.length}/40</span>
+                </div>
+              ))}
+              {visibleMetaHeadlines < 5 && (
+                <button
+                  onClick={() => setVisibleMetaHeadlines(Math.min(visibleMetaHeadlines + 1, 5))}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add another headline option
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Description Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('description')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.description ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Description</span>
+              <span className="text-xs text-gray-400">(optional)</span>
+            </div>
+          </button>
+          {metaExpandedSections.description && (
+            <div className="mt-4 pl-7">
+              <p className="text-xs text-gray-500 mb-2">25-30 characters. Only shown on some placements (Marketplace, Search).</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={metaDescription}
+                  onChange={(e) => {
+                    setMetaDescription(e.target.value);
+                    setDescription(e.target.value);
+                  }}
+                  placeholder="Link description"
+                  maxLength={30}
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <span className="text-xs text-gray-400 w-10 text-right">{metaDescription.length}/30</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Destination Section */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('destination')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.destination ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Destination</span>
+            </div>
+          </button>
+          {metaExpandedSections.destination && (
+            <div className="mt-4 pl-7 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
+                <input
+                  type="url"
+                  value={metaDestinationUrl}
+                  onChange={(e) => setMetaDestinationUrl(e.target.value)}
+                  placeholder="https://example.com/landing-page"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display link (optional)</label>
                 <input
                   type="text"
                   value={linkDisplay}
                   onChange={(e) => setLinkDisplay(e.target.value)}
                   placeholder="example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">CTA Button</label>
-                <select
-                  value={metaCtaText}
-                  onChange={(e) => setMetaCtaText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Learn More</option>
-                  <option>Shop Now</option>
-                  <option>Sign Up</option>
-                  <option>Book Now</option>
-                  <option>Contact Us</option>
-                  <option>Download</option>
-                  <option>Get Offer</option>
-                </select>
+                <p className="text-xs text-gray-400 mt-1">Shown instead of the full URL</p>
               </div>
             </div>
-          </div>
-        );
+          )}
+        </div>
 
-      case 'fb-stories':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Page Name</label>
-              <input
-                type="text"
-                value={pageName}
-                onChange={(e) => setPageName(e.target.value)}
-                placeholder="Your Page"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Headline (optional)</label>
-              <input
-                type="text"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                placeholder="Story headline"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <ImageUpload
-              label="Story Image (9:16)"
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              aspectRatio="9:16"
-            />
-            <ImageUpload
-              label="Page Profile Image"
-              value={pageImageUrl}
-              onChange={setPageImageUrl}
-              aspectRatio="1:1"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Link Display</label>
-                <input
-                  type="text"
-                  value={linkDisplay}
-                  onChange={(e) => setLinkDisplay(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">CTA Button</label>
-                <select
-                  value={metaCtaText}
-                  onChange={(e) => setMetaCtaText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Learn More</option>
-                  <option>Shop Now</option>
-                  <option>Sign Up</option>
-                  <option>Swipe Up</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        );
+        {/* Call to Action */}
+        <div className="py-4">
+          <label className="block text-sm font-medium text-gray-900 mb-2">Call to action</label>
+          <select
+            value={metaCtaText}
+            onChange={(e) => setMetaCtaText(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            {metaCtaOptions.map((cta) => (
+              <option key={cta} value={cta}>{cta}</option>
+            ))}
+          </select>
+        </div>
 
-      case 'ig-feed':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="yourbrand"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Caption</label>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Your caption..."
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <ImageUpload
-              label="Post Image (1:1)"
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              aspectRatio="1:1"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
-                <input
-                  type="text"
-                  value={linkDisplay}
-                  onChange={(e) => setLinkDisplay(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">CTA Button</label>
-                <select
-                  value={metaCtaText}
-                  onChange={(e) => setMetaCtaText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Learn More</option>
-                  <option>Shop Now</option>
-                  <option>Sign Up</option>
-                </select>
+        {/* Placement-specific note */}
+        <div className="py-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+              </svg>
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">Previewing: {metaAdType === 'fb-feed' ? 'Facebook Feed' : metaAdType === 'fb-stories' ? 'Facebook Stories' : metaAdType === 'ig-feed' ? 'Instagram Feed' : metaAdType === 'ig-stories' ? 'Instagram Stories' : 'Instagram Reels'}</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {metaAdType.includes('feed') ? 'Primary text appears above the image. Headline and description appear below.' : 'Only headline shows on Stories/Reels. Primary text is not displayed.'}
+                </p>
               </div>
             </div>
           </div>
-        );
-
-      case 'ig-stories':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="yourbrand"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <ImageUpload
-              label="Story Image (9:16)"
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              aspectRatio="9:16"
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">CTA Button</label>
-              <select
-                value={metaCtaText}
-                onChange={(e) => setMetaCtaText(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option>Learn More</option>
-                <option>Shop Now</option>
-                <option>Swipe Up</option>
-              </select>
-            </div>
-          </div>
-        );
-
-      case 'ig-reels':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="yourbrand"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Caption</label>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Your caption... #ad"
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <ImageUpload
-              label="Reel Image/Video (9:16)"
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              aspectRatio="9:16"
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">CTA Button</label>
-              <select
-                value={metaCtaText}
-                onChange={(e) => setMetaCtaText(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option>Shop Now</option>
-                <option>Learn More</option>
-                <option>Sign Up</option>
-              </select>
-            </div>
-          </div>
-        );
-    }
+        </div>
+      </div>
+    );
   };
 
   const renderGooglePreview = () => {
@@ -1249,17 +1332,26 @@ export default function Home() {
   };
 
   const renderMetaPreview = () => {
+    // Use Instagram account or page name for username
+    const displayUsername = instagramAccount || pageName || 'username';
+    // Use first primary text as caption for Instagram
+    const displayCaption = primaryTexts[0] || primaryText || caption;
+    // Use first headline
+    const displayHeadline = metaHeadlines[0] || headline;
+    // Use first media URL
+    const displayImageUrl = metaMediaUrls[0] || metaImageUrl;
+
     switch (metaAdType) {
       case 'fb-feed':
-        return <MetaFeedAd pageName={pageName} primaryText={primaryText} headline={headline} description={description} imageUrl={metaImageUrl} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
+        return <MetaFeedAd pageName={pageName} primaryText={primaryTexts[0] || primaryText} headline={displayHeadline} description={metaDescription || description} imageUrl={displayImageUrl} ctaText={metaCtaText} linkDisplay={linkDisplay} pageImageUrl={pageImageUrl} />;
       case 'fb-stories':
-        return <FacebookStoriesAd pageName={pageName} pageImageUrl={pageImageUrl} imageUrl={metaImageUrl} headline={headline} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
+        return <FacebookStoriesAd pageName={pageName} pageImageUrl={pageImageUrl} imageUrl={displayImageUrl} headline={displayHeadline} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
       case 'ig-feed':
-        return <InstagramFeedAd username={username} caption={caption} imageUrl={metaImageUrl} ctaText={metaCtaText} website={linkDisplay} />;
+        return <InstagramFeedAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} ctaText={metaCtaText} website={linkDisplay} profileImageUrl={pageImageUrl} />;
       case 'ig-stories':
-        return <InstagramStoryAd username={username} imageUrl={metaImageUrl} ctaText={metaCtaText} />;
+        return <InstagramStoryAd username={displayUsername} imageUrl={displayImageUrl} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
       case 'ig-reels':
-        return <InstagramReelsAd username={username} caption={caption} imageUrl={metaImageUrl} ctaText={metaCtaText} />;
+        return <InstagramReelsAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
     }
   };
 

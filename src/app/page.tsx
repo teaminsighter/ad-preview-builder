@@ -1993,11 +1993,11 @@ export default function Home() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-3 pt-4">
           <button
             onClick={copyUtmUrl}
             disabled={!utmBaseUrl || !utmSource || !utmMedium || !utmCampaign}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-5 py-3 btn-gradient text-white font-semibold rounded-xl shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-300 shine"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -2006,7 +2006,7 @@ export default function Home() {
           </button>
           <button
             onClick={clearUtmForm}
-            className="px-4 py-2.5 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-5 py-3 text-gray-700 font-semibold border border-gray-200 rounded-xl hover:bg-gray-50 hover:shadow-md transition-all duration-300 card-hover"
           >
             Clear
           </button>
@@ -2022,20 +2022,20 @@ export default function Home() {
     return (
       <div className="space-y-6">
         {/* Generated URL */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Generated URL</h3>
-          <div className="bg-gray-50 rounded-lg p-3 break-all">
+        <div className="glass rounded-xl border border-white/20 p-5 shadow-lg">
+          <h3 className="text-sm font-bold gradient-text mb-4">Generated URL</h3>
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 break-all border border-gray-100">
             {generatedUrl ? (
-              <code className="text-sm text-blue-600">{generatedUrl}</code>
+              <code className="text-sm text-indigo-600 font-medium">{generatedUrl}</code>
             ) : (
               <span className="text-sm text-gray-400">Enter a URL and UTM parameters to generate...</span>
             )}
           </div>
           {generatedUrl && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 flex gap-3">
               <button
                 onClick={copyUtmUrl}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-300"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -2046,7 +2046,7 @@ export default function Home() {
                 href={generatedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-300"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -2059,8 +2059,8 @@ export default function Home() {
 
         {/* URL Breakdown */}
         {generatedUrl && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Parameter Breakdown</h3>
+          <div className="glass rounded-xl border border-white/20 p-5 shadow-lg">
+            <h3 className="text-sm font-bold gradient-text mb-4">Parameter Breakdown</h3>
             <div className="space-y-2">
               {utmSource && (
                 <div className="flex items-center text-sm">
@@ -2098,17 +2098,17 @@ export default function Home() {
 
         {/* History */}
         {utmHistory.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Recent URLs</h3>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="glass rounded-xl border border-white/20 p-5 shadow-lg">
+            <h3 className="text-sm font-bold gradient-text mb-4">Recent URLs</h3>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
               {utmHistory.map((url, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
+                <div key={i} className="flex items-center gap-3 text-sm bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-colors">
                   <button
                     onClick={async () => {
                       await navigator.clipboard.writeText(url);
                       alert('Copied!');
                     }}
-                    className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600"
+                    className="flex-shrink-0 p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -2122,13 +2122,18 @@ export default function Home() {
         )}
 
         {/* Tips */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">UTM Best Practices</h3>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Use lowercase letters and underscores (no spaces)</li>
-            <li>• Be consistent with naming conventions</li>
-            <li>• Keep campaign names short but descriptive</li>
-            <li>• Document your UTM parameters in a spreadsheet</li>
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-5 shadow-md">
+          <h3 className="text-sm font-bold text-indigo-800 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+            UTM Best Practices
+          </h3>
+          <ul className="text-xs text-indigo-700 space-y-2">
+            <li className="flex items-start gap-2"><span className="text-indigo-400">•</span> Use lowercase letters and underscores (no spaces)</li>
+            <li className="flex items-start gap-2"><span className="text-indigo-400">•</span> Be consistent with naming conventions</li>
+            <li className="flex items-start gap-2"><span className="text-indigo-400">•</span> Keep campaign names short but descriptive</li>
+            <li className="flex items-start gap-2"><span className="text-indigo-400">•</span> Document your UTM parameters in a spreadsheet</li>
           </ul>
         </div>
       </div>
@@ -2201,29 +2206,29 @@ export default function Home() {
     return (
       <div className="space-y-6">
         {adLibraryLinks.map((category, idx) => (
-          <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">{category.category}</h3>
+          <div key={idx} className="glass rounded-2xl border border-white/20 overflow-hidden shadow-xl card-hover">
+            <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 px-5 py-4 border-b border-white/10">
+              <h3 className="font-bold gradient-text text-lg">{category.category}</h3>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100/50">
               {category.links.map((link, linkIdx) => (
                 <a
                   key={linkIdx}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-blue-50 transition-colors group"
+                  className="flex items-start gap-4 px-5 py-4 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-300 group"
                 >
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex-shrink-0 w-10 h-10 btn-gradient rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{link.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{link.description}</p>
+                    <p className="text-sm font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors">{link.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{link.description}</p>
                   </div>
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 flex-shrink-0 mt-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </a>
@@ -2294,7 +2299,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen gradient-bg">
       {/* Hidden file input for import */}
       <input
         type="file"
@@ -2305,18 +2310,18 @@ export default function Home() {
       />
 
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <header className="glass shadow-xl border-b border-white/20 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Ad Preview Builder</h1>
-              <p className="text-gray-600 text-sm">Preview your ads before publishing to Google Ads & Meta Ads</p>
+            <div className="float">
+              <h1 className="text-3xl font-bold gradient-text">Ad Preview Builder</h1>
+              <p className="text-gray-600 text-sm mt-1">Preview your ads before publishing to Google Ads & Meta Ads</p>
             </div>
             <div className="flex items-center gap-2">
               {/* Import */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 card-hover"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -2325,7 +2330,7 @@ export default function Home() {
               </button>
               {/* Export Dropdown */}
               <div className="relative group">
-                <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <button className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 card-hover">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
@@ -2398,7 +2403,7 @@ export default function Home() {
               {/* Save to Browser */}
               <button
                 onClick={saveToLocalStorage}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 shine glow-hover"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -2411,15 +2416,15 @@ export default function Home() {
       </header>
 
       {/* Platform Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="glass-dark border-b border-white/10 shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex gap-4">
+          <nav className="flex gap-2">
             <button
               onClick={() => setPlatform('google')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
                 platform === 'google'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -2432,10 +2437,10 @@ export default function Home() {
             </button>
             <button
               onClick={() => setPlatform('meta')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
                 platform === 'meta'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill={platform === 'meta' ? '#1877F2' : '#9CA3AF'}>
@@ -2445,10 +2450,10 @@ export default function Home() {
             </button>
             <button
               onClick={() => setPlatform('utm')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
                 platform === 'utm'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={platform === 'utm' ? '#2563EB' : '#9CA3AF'} strokeWidth="2">
@@ -2458,10 +2463,10 @@ export default function Home() {
             </button>
             <button
               onClick={() => setPlatform('library')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
                 platform === 'library'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={platform === 'library' ? '#2563EB' : '#9CA3AF'} strokeWidth="2">
@@ -2475,18 +2480,18 @@ export default function Home() {
 
       {/* Sub Tabs */}
       {platform !== 'utm' && platform !== 'library' && (
-        <div className="bg-gray-50 border-b border-gray-200">
+        <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
-            <nav className="flex gap-1 overflow-x-auto py-2">
+            <nav className="flex gap-2 overflow-x-auto py-3">
               {platform === 'google' ? (
                 googleAdTypes.map((type) => (
                   <button
                     key={type.id}
                     onClick={() => setGoogleAdType(type.id)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
                       googleAdType === type.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                        ? 'btn-gradient text-white shadow-lg glow'
+                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
                     }`}
                   >
                     {type.label}
@@ -2497,10 +2502,10 @@ export default function Home() {
                   <button
                     key={type.id}
                     onClick={() => setMetaAdType(type.id)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
                       metaAdType === type.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                        ? 'btn-gradient text-white shadow-lg glow'
+                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
                     }`}
                   >
                     {type.label}
@@ -2513,15 +2518,15 @@ export default function Home() {
       )}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-10">
         {platform === 'library' ? (
           /* Ad Library - Full Width */
           <div>
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Ad Library Resources</h2>
-              <p className="text-sm text-gray-600 mt-1">Browse competitor ads and find creative inspiration across all major platforms</p>
+            <div className="mb-8 text-center">
+              <h2 className="text-2xl font-bold gradient-text inline-block">Ad Library Resources</h2>
+              <p className="text-sm text-gray-600 mt-2">Browse competitor ads and find creative inspiration across all major platforms</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 card-grid">
               {renderAdLibrary()}
             </div>
           </div>
@@ -2529,19 +2534,19 @@ export default function Home() {
           /* Two Column Layout for Editors */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Editor Panel */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="glass rounded-2xl shadow-xl p-6 card-hover border border-white/20">
+              <h2 className="text-lg font-bold gradient-text mb-6">
                 {platform === 'utm' ? 'UTM Parameters' : 'Ad Content'}
               </h2>
               {platform === 'google' ? renderGoogleEditor() : platform === 'meta' ? renderMetaEditor() : renderUtmEditor()}
             </div>
 
             {/* Preview Panel */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="glass rounded-2xl shadow-xl p-6 card-hover border border-white/20">
+              <h2 className="text-lg font-bold gradient-text mb-6">
                 {platform === 'utm' ? 'Generated URL' : 'Preview'}
               </h2>
-              <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gray-50 rounded-lg p-4 overflow-auto'}`}>
+              <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 overflow-auto border border-gray-100'}`}>
                 {platform === 'google' ? renderGooglePreview() : platform === 'meta' ? renderMetaPreview() : renderUtmPreview()}
               </div>
             </div>
@@ -2550,9 +2555,11 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-8">
-        <div className="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          Ad Preview Builder - Preview your Google Ads & Meta ads before publishing
+      <footer className="glass border-t border-white/20 mt-12">
+        <div className="max-w-7xl mx-auto px-4 py-6 text-center">
+          <p className="text-sm text-gray-600">
+            <span className="gradient-text font-semibold">Ad Preview Builder</span> - Preview your Google Ads & Meta ads before publishing
+          </p>
         </div>
       </footer>
     </div>

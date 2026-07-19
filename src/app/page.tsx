@@ -163,14 +163,24 @@ export default function Home() {
   const [metaDestinationUrl, setMetaDestinationUrl] = useState('');
   const [linkDisplay, setLinkDisplay] = useState('');
 
+  // Advantage+ Creative (2026 update)
+  const [advantagePlusCreative, setAdvantagePlusCreative] = useState(true);
+  const [textGeneration, setTextGeneration] = useState(false);
+  const [optimizeTextPerPerson, setOptimizeTextPerPerson] = useState(true);
+
+  // Customer Lifecycle Strategy (2026 update)
+  const [lifecycleStrategy, setLifecycleStrategy] = useState<'all' | 'new-customers'>('all');
+
   // Expanded sections for Meta
   const [metaExpandedSections, setMetaExpandedSections] = useState<Record<string, boolean>>({
+    advantagePlus: true,
     identity: true,
     media: true,
     primaryText: true,
     headlines: false,
     description: false,
     destination: false,
+    tracking: false,
   });
 
   const toggleMetaSection = (section: string) => {
@@ -978,9 +988,97 @@ export default function Home() {
   };
 
   const renderMetaEditor = () => {
-    // Unified Meta Ads editor matching real Ads Manager interface
+    // Unified Meta Ads editor matching real Ads Manager interface (2026 update)
     return (
       <div className="space-y-0 divide-y divide-gray-200">
+        {/* Advantage+ Creative Section (2026) */}
+        <div className="py-4">
+          <button
+            onClick={() => toggleMetaSection('advantagePlus')}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.advantagePlus ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium text-gray-900">Advantage+ creative</span>
+              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">2026</span>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded ${advantagePlusCreative ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {advantagePlusCreative ? 'On' : 'Off'}
+            </span>
+          </button>
+          {metaExpandedSections.advantagePlus && (
+            <div className="mt-4 pl-7 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                <p className="text-xs text-blue-800">
+                  Advantage+ creative uses AI to automatically optimize your ad creative for each person. Meta now defaults to Advantage+ setup for all new campaigns.
+                </p>
+              </div>
+
+              {/* Main Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Enable Advantage+ creative</span>
+                  <p className="text-xs text-gray-500">AI-driven creative optimizations</p>
+                </div>
+                <button
+                  onClick={() => setAdvantagePlusCreative(!advantagePlusCreative)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${advantagePlusCreative ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${advantagePlusCreative ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
+              {advantagePlusCreative && (
+                <>
+                  {/* Text Generation */}
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                    <div>
+                      <span className="text-sm text-gray-700">Text generation</span>
+                      <p className="text-xs text-gray-500">AI creates up to 5 versions of your text</p>
+                    </div>
+                    <button
+                      onClick={() => setTextGeneration(!textGeneration)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${textGeneration ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${textGeneration ? 'translate-x-5' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Optimize Text Per Person */}
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                    <div>
+                      <span className="text-sm text-gray-700">Optimize text per person</span>
+                      <p className="text-xs text-gray-500">Swap headline & primary text positions</p>
+                    </div>
+                    <button
+                      onClick={() => setOptimizeTextPerPerson(!optimizeTextPerPerson)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${optimizeTextPerPerson ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${optimizeTextPerPerson ? 'translate-x-5' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Customer Lifecycle Strategy */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <span className="text-sm text-gray-700">Customer lifecycle strategy</span>
+                    <p className="text-xs text-gray-500 mb-2">Choose who sees your ads</p>
+                    <select
+                      value={lifecycleStrategy}
+                      onChange={(e) => setLifecycleStrategy(e.target.value as 'all' | 'new-customers')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="all">Get conversions from all audiences</option>
+                      <option value="new-customers">Acquire new customers only</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Ad Identity Section */}
         <div className="py-4">
           <button
@@ -1098,7 +1196,12 @@ export default function Home() {
           </button>
           {metaExpandedSections.primaryText && (
             <div className="mt-4 pl-7 space-y-3">
-              <p className="text-xs text-gray-500">125 characters recommended. Add up to 5 text options for testing.</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>125 characters visible before "See more" (2,200 max). Reels: 40-72 chars.</p>
+                {textGeneration && (
+                  <p className="text-blue-600">AI will generate up to 5 additional text variations.</p>
+                )}
+              </div>
               {primaryTexts.slice(0, visiblePrimaryTexts).map((text, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex items-start gap-2">
@@ -1154,7 +1257,12 @@ export default function Home() {
           </button>
           {metaExpandedSections.headlines && (
             <div className="mt-4 pl-7 space-y-3">
-              <p className="text-xs text-gray-500">40 characters recommended. Add up to 5 headline options.</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>40 characters recommended (255 max). Reels overlay: 10 chars visible.</p>
+                {optimizeTextPerPerson && (
+                  <p className="text-blue-600">Headlines may swap with primary text based on user.</p>
+                )}
+              </div>
               {metaHeadlines.slice(0, visibleMetaHeadlines).map((h, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-sm text-gray-400 w-5">{i + 1}</span>
@@ -1287,10 +1395,19 @@ export default function Home() {
               <div className="text-sm text-blue-800">
                 <p className="font-medium">Previewing: {metaAdType === 'fb-feed' ? 'Facebook Feed' : metaAdType === 'fb-stories' ? 'Facebook Stories' : metaAdType === 'ig-feed' ? 'Instagram Feed' : metaAdType === 'ig-stories' ? 'Instagram Stories' : 'Instagram Reels'}</p>
                 <p className="text-xs text-blue-600 mt-1">
-                  {metaAdType.includes('feed') ? 'Primary text appears above the image. Headline and description appear below.' : 'Only headline shows on Stories/Reels. Primary text is not displayed.'}
+                  {metaAdType.includes('feed') ? 'Primary text above image (125 chars visible). Headline & description below.' : metaAdType.includes('reels') ? 'Reels: Primary text 40-72 chars, overlay headline 10 chars visible.' : 'Stories: Only headline visible. Primary text not displayed.'}
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 2026 Platform Updates Note */}
+        <div className="py-4">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-xs text-gray-600">
+              <span className="font-medium">2026 Updates:</span> Threads ads now available globally • Reels post-view ads after 60s videos • New "Interactions" metric replaces "Engagement" • Click attribution excludes likes/shares
+            </p>
           </div>
         </div>
       </div>

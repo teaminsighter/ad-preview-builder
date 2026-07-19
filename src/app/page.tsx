@@ -393,6 +393,94 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  // Export to Google Sheets (copies data and opens new sheet)
+  const exportToGoogleSheets = async () => {
+    const data = getAdData();
+    const rows: string[][] = [];
+
+    // Create spreadsheet-friendly format with multiple columns
+    rows.push(['Category', 'Field', 'Value', 'Character Count', 'Limit']);
+
+    // Google Ads section
+    rows.push(['Settings', 'Platform', data.platform, '', '']);
+    rows.push(['Settings', 'Business Name', data.businessName, String(data.businessName.length), '25']);
+    rows.push(['Settings', 'Final URL', data.finalUrl, '', '']);
+    rows.push(['Settings', 'Display URL', data.displayUrl, '', '']);
+    rows.push(['Settings', 'Path 1', data.path1, String(data.path1.length), '15']);
+    rows.push(['Settings', 'Path 2', data.path2, String(data.path2.length), '15']);
+    rows.push(['Settings', 'Phone Number', data.phoneNumber, '', '']);
+
+    // Headlines
+    data.headlines.forEach((h, i) => {
+      rows.push(['Google Headlines', `Headline ${i + 1}`, h, String(h.length), '30']);
+    });
+
+    // Descriptions
+    data.descriptions.forEach((d, i) => {
+      rows.push(['Google Descriptions', `Description ${i + 1}`, d, String(d.length), '90']);
+    });
+
+    // Callouts
+    data.callouts.forEach((c, i) => {
+      if (c) rows.push(['Callouts', `Callout ${i + 1}`, c, String(c.length), '25']);
+    });
+
+    // Sitelinks
+    data.sitelinks.forEach((s, i) => {
+      if (s.title) {
+        rows.push(['Sitelinks', `Sitelink ${i + 1} Title`, s.title, String(s.title.length), '25']);
+        rows.push(['Sitelinks', `Sitelink ${i + 1} Desc 1`, s.description1, String(s.description1.length), '35']);
+        rows.push(['Sitelinks', `Sitelink ${i + 1} Desc 2`, s.description2, String(s.description2.length), '35']);
+      }
+    });
+
+    // Structured Snippets
+    rows.push(['Snippets', 'Header', data.snippetHeader, '', '']);
+    data.snippetValues.forEach((v, i) => {
+      if (v) rows.push(['Snippets', `Value ${i + 1}`, v, String(v.length), '25']);
+    });
+
+    // Meta Ads section
+    rows.push(['Meta Identity', 'Page Name', data.pageName, '', '']);
+    rows.push(['Meta Identity', 'Instagram Account', data.instagramAccount, '', '']);
+    rows.push(['Meta Settings', 'CTA Button', data.metaCtaText, '', '']);
+    rows.push(['Meta Settings', 'Destination URL', data.metaDestinationUrl, '', '']);
+    rows.push(['Meta Settings', 'Display Link', data.linkDisplay, '', '']);
+
+    data.primaryTexts.forEach((t, i) => {
+      rows.push(['Meta Primary Text', `Primary Text ${i + 1}`, t, String(t.length), '125']);
+    });
+
+    data.metaHeadlines.forEach((h, i) => {
+      rows.push(['Meta Headlines', `Headline ${i + 1}`, h, String(h.length), '40']);
+    });
+
+    rows.push(['Meta Description', 'Description', data.metaDescription, String(data.metaDescription.length), '30']);
+
+    // Convert to TSV (tab-separated) - Google Sheets handles this perfectly
+    const tsvContent = rows.map(row =>
+      row.map(cell => String(cell).replace(/\t/g, ' ').replace(/\n/g, ' ')).join('\t')
+    ).join('\n');
+
+    // Copy to clipboard
+    try {
+      await navigator.clipboard.writeText(tsvContent);
+      // Open Google Sheets
+      window.open('https://docs.google.com/spreadsheets/create', '_blank');
+      alert('Data copied! In Google Sheets, press Ctrl+V (Cmd+V on Mac) to paste your ad data.');
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = tsvContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      window.open('https://docs.google.com/spreadsheets/create', '_blank');
+      alert('Data copied! In Google Sheets, press Ctrl+V (Cmd+V on Mac) to paste your ad data.');
+    }
+  };
+
   // Import from JSON
   const importFromJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1752,18 +1840,35 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                  <button
+                    onClick={exportToGoogleSheets}
+                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-t-lg flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#34A853" d="M19 11V9h-2V7h-2v2h-2v2h2v2h2v-2h2z"/>
+                      <path fill="#188038" d="M19 13v6c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h6v4c0 1.1.9 2 2 2h4z"/>
+                      <path fill="#34A853" d="M15 3l4 4h-4V3z"/>
+                    </svg>
+                    Google Sheets
+                  </button>
                   <button
                     onClick={exportToJSON}
-                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
-                    Export as JSON
+                    <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM8 17h8v-2H8v2zm0-4h8v-2H8v2z"/>
+                    </svg>
+                    JSON File
                   </button>
                   <button
                     onClick={exportToCSV}
-                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-b-lg"
+                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-b-lg flex items-center gap-2"
                   >
-                    Export as CSV
+                    <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM8 17h2v-2H8v2zm0-4h2v-2H8v2zm0-4h2V7H8v2zm4 8h4v-2h-4v2zm0-4h4v-2h-4v2z"/>
+                    </svg>
+                    CSV File
                   </button>
                 </div>
               </div>

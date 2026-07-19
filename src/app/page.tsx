@@ -14,9 +14,14 @@ import InstagramReelsAd from '@/components/previews/InstagramReelsAd';
 import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
 import ImageUpload from '@/components/ImageUpload';
 
-type Platform = 'google' | 'meta';
+type Platform = 'google' | 'meta' | 'utm';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover';
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
+
+// UTM Parameter presets
+const utmSourceOptions = ['google', 'facebook', 'instagram', 'twitter', 'linkedin', 'email', 'newsletter', 'bing', 'youtube', 'tiktok'];
+const utmMediumOptions = ['cpc', 'cpm', 'social', 'email', 'organic', 'referral', 'display', 'video', 'affiliate', 'banner'];
+const utmCampaignPresets = ['spring_sale', 'summer_promo', 'black_friday', 'brand_awareness', 'product_launch', 'retargeting'];
 
 const googleAdTypes: { id: GoogleAdType; label: string }[] = [
   { id: 'search', label: 'Search' },
@@ -185,6 +190,60 @@ export default function Home() {
 
   const toggleMetaSection = (section: string) => {
     setMetaExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // UTM Builder State
+  const [utmBaseUrl, setUtmBaseUrl] = useState('');
+  const [utmSource, setUtmSource] = useState('');
+  const [utmMedium, setUtmMedium] = useState('');
+  const [utmCampaign, setUtmCampaign] = useState('');
+  const [utmTerm, setUtmTerm] = useState('');
+  const [utmContent, setUtmContent] = useState('');
+  const [utmHistory, setUtmHistory] = useState<string[]>([]);
+
+  // Generate UTM URL
+  const generateUtmUrl = () => {
+    if (!utmBaseUrl) return '';
+
+    const params = new URLSearchParams();
+    if (utmSource) params.set('utm_source', utmSource);
+    if (utmMedium) params.set('utm_medium', utmMedium);
+    if (utmCampaign) params.set('utm_campaign', utmCampaign);
+    if (utmTerm) params.set('utm_term', utmTerm);
+    if (utmContent) params.set('utm_content', utmContent);
+
+    const paramString = params.toString();
+    if (!paramString) return utmBaseUrl;
+
+    const separator = utmBaseUrl.includes('?') ? '&' : '?';
+    return `${utmBaseUrl}${separator}${paramString}`;
+  };
+
+  // Copy UTM URL
+  const copyUtmUrl = async () => {
+    const url = generateUtmUrl();
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      // Add to history
+      setUtmHistory(prev => {
+        const newHistory = [url, ...prev.filter(u => u !== url)].slice(0, 10);
+        return newHistory;
+      });
+      alert('URL copied to clipboard!');
+    } catch {
+      alert('Failed to copy');
+    }
+  };
+
+  // Clear UTM form
+  const clearUtmForm = () => {
+    setUtmSource('');
+    setUtmMedium('');
+    setUtmCampaign('');
+    setUtmTerm('');
+    setUtmContent('');
   };
 
   // Meta CTA Options (30+ options based on objective)
@@ -1806,6 +1865,276 @@ export default function Home() {
     );
   };
 
+  // UTM Builder Editor
+  const renderUtmEditor = () => {
+    return (
+      <div className="space-y-6">
+        {/* Base URL */}
+        <div>
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+            Website URL
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="url"
+            value={utmBaseUrl}
+            onChange={(e) => setUtmBaseUrl(e.target.value)}
+            placeholder="https://example.com/landing-page"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900"
+          />
+        </div>
+
+        {/* Required Parameters */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Required Parameters</h3>
+
+          {/* Source */}
+          <div className="mb-4">
+            <label className="flex items-center gap-1 text-sm text-gray-700 mb-1">
+              Campaign Source (utm_source)
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={utmSource}
+                onChange={(e) => setUtmSource(e.target.value)}
+                placeholder="google, facebook, newsletter"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+              />
+              <select
+                value=""
+                onChange={(e) => setUtmSource(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+              >
+                <option value="">Quick fill</option>
+                {utmSourceOptions.map(opt => (
+                  <option key={opt} value={opt} className="text-gray-900">{opt}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Identifies the advertiser, site, or publication</p>
+          </div>
+
+          {/* Medium */}
+          <div className="mb-4">
+            <label className="flex items-center gap-1 text-sm text-gray-700 mb-1">
+              Campaign Medium (utm_medium)
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={utmMedium}
+                onChange={(e) => setUtmMedium(e.target.value)}
+                placeholder="cpc, email, social"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+              />
+              <select
+                value=""
+                onChange={(e) => setUtmMedium(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+              >
+                <option value="">Quick fill</option>
+                {utmMediumOptions.map(opt => (
+                  <option key={opt} value={opt} className="text-gray-900">{opt}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Marketing medium: cpc, banner, email</p>
+          </div>
+
+          {/* Campaign */}
+          <div className="mb-4">
+            <label className="flex items-center gap-1 text-sm text-gray-700 mb-1">
+              Campaign Name (utm_campaign)
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={utmCampaign}
+              onChange={(e) => setUtmCampaign(e.target.value)}
+              placeholder="spring_sale, product_launch"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+            />
+            <p className="text-xs text-gray-500 mt-1">Product, promo code, or slogan</p>
+          </div>
+        </div>
+
+        {/* Optional Parameters */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Optional Parameters</h3>
+
+          {/* Term */}
+          <div className="mb-4">
+            <label className="text-sm text-gray-700 mb-1 block">Campaign Term (utm_term)</label>
+            <input
+              type="text"
+              value={utmTerm}
+              onChange={(e) => setUtmTerm(e.target.value)}
+              placeholder="running+shoes, best+deals"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+            />
+            <p className="text-xs text-gray-500 mt-1">Paid keywords (for search ads)</p>
+          </div>
+
+          {/* Content */}
+          <div className="mb-4">
+            <label className="text-sm text-gray-700 mb-1 block">Campaign Content (utm_content)</label>
+            <input
+              type="text"
+              value={utmContent}
+              onChange={(e) => setUtmContent(e.target.value)}
+              placeholder="logolink, textlink, banner_v2"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900"
+            />
+            <p className="text-xs text-gray-500 mt-1">Differentiate ads or links pointing to same URL</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-2">
+          <button
+            onClick={copyUtmUrl}
+            disabled={!utmBaseUrl || !utmSource || !utmMedium || !utmCampaign}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            Copy URL
+          </button>
+          <button
+            onClick={clearUtmForm}
+            className="px-4 py-2.5 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // UTM Preview
+  const renderUtmPreview = () => {
+    const generatedUrl = generateUtmUrl();
+
+    return (
+      <div className="space-y-6">
+        {/* Generated URL */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Generated URL</h3>
+          <div className="bg-gray-50 rounded-lg p-3 break-all">
+            {generatedUrl ? (
+              <code className="text-sm text-blue-600">{generatedUrl}</code>
+            ) : (
+              <span className="text-sm text-gray-400">Enter a URL and UTM parameters to generate...</span>
+            )}
+          </div>
+          {generatedUrl && (
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={copyUtmUrl}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                Copy
+              </button>
+              <a
+                href={generatedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Test Link
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* URL Breakdown */}
+        {generatedUrl && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Parameter Breakdown</h3>
+            <div className="space-y-2">
+              {utmSource && (
+                <div className="flex items-center text-sm">
+                  <span className="w-28 text-gray-500">utm_source:</span>
+                  <span className="text-gray-900 font-medium">{utmSource}</span>
+                </div>
+              )}
+              {utmMedium && (
+                <div className="flex items-center text-sm">
+                  <span className="w-28 text-gray-500">utm_medium:</span>
+                  <span className="text-gray-900 font-medium">{utmMedium}</span>
+                </div>
+              )}
+              {utmCampaign && (
+                <div className="flex items-center text-sm">
+                  <span className="w-28 text-gray-500">utm_campaign:</span>
+                  <span className="text-gray-900 font-medium">{utmCampaign}</span>
+                </div>
+              )}
+              {utmTerm && (
+                <div className="flex items-center text-sm">
+                  <span className="w-28 text-gray-500">utm_term:</span>
+                  <span className="text-gray-900 font-medium">{utmTerm}</span>
+                </div>
+              )}
+              {utmContent && (
+                <div className="flex items-center text-sm">
+                  <span className="w-28 text-gray-500">utm_content:</span>
+                  <span className="text-gray-900 font-medium">{utmContent}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* History */}
+        {utmHistory.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Recent URLs</h3>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {utmHistory.map((url, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(url);
+                      alert('Copied!');
+                    }}
+                    className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                  <span className="truncate text-gray-600">{url}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tips */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">UTM Best Practices</h3>
+          <ul className="text-xs text-blue-700 space-y-1">
+            <li>• Use lowercase letters and underscores (no spaces)</li>
+            <li>• Be consistent with naming conventions</li>
+            <li>• Keep campaign names short but descriptive</li>
+            <li>• Document your UTM parameters in a spreadsheet</li>
+          </ul>
+        </div>
+      </div>
+    );
+  };
+
   const renderGooglePreview = () => {
     switch (googleAdType) {
       case 'search':
@@ -2014,61 +2343,80 @@ export default function Home() {
               </svg>
               Meta Ads
             </button>
+            <button
+              onClick={() => setPlatform('utm')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                platform === 'utm'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={platform === 'utm' ? '#2563EB' : '#9CA3AF'} strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              UTM Builder
+            </button>
           </nav>
         </div>
       </div>
 
       {/* Sub Tabs */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4">
-          <nav className="flex gap-1 overflow-x-auto py-2">
-            {platform === 'google' ? (
-              googleAdTypes.map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => setGoogleAdType(type.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
-                    googleAdType === type.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))
-            ) : (
-              metaAdTypes.map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => setMetaAdType(type.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
-                    metaAdType === type.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))
-            )}
-          </nav>
+      {platform !== 'utm' && (
+        <div className="bg-gray-50 border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4">
+            <nav className="flex gap-1 overflow-x-auto py-2">
+              {platform === 'google' ? (
+                googleAdTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setGoogleAdType(type.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                      googleAdType === type.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))
+              ) : (
+                metaAdTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setMetaAdType(type.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+                      metaAdType === type.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))
+              )}
+            </nav>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Editor Panel */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Ad Content</h2>
-            {platform === 'google' ? renderGoogleEditor() : renderMetaEditor()}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {platform === 'utm' ? 'UTM Parameters' : 'Ad Content'}
+            </h2>
+            {platform === 'google' ? renderGoogleEditor() : platform === 'meta' ? renderMetaEditor() : renderUtmEditor()}
           </div>
 
           {/* Preview Panel */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-            <div className="flex items-center justify-center min-h-[500px] bg-gray-50 rounded-lg p-4 overflow-auto">
-              {platform === 'google' ? renderGooglePreview() : renderMetaPreview()}
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {platform === 'utm' ? 'Generated URL' : 'Preview'}
+            </h2>
+            <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gray-50 rounded-lg p-4 overflow-auto'}`}>
+              {platform === 'google' ? renderGooglePreview() : platform === 'meta' ? renderMetaPreview() : renderUtmPreview()}
             </div>
           </div>
         </div>

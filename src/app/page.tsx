@@ -42,10 +42,19 @@ export default function Home() {
 
   // Google Ads State
   const [businessName, setBusinessName] = useState('');
-  const [headlines, setHeadlines] = useState(['', '', '']);
-  const [descriptions, setDescriptions] = useState(['', '']);
+  const [headlines, setHeadlines] = useState<string[]>(Array(15).fill(''));
+  const [descriptions, setDescriptions] = useState<string[]>(Array(4).fill(''));
   const [displayUrl, setDisplayUrl] = useState('');
   const [finalUrl, setFinalUrl] = useState('');
+  const [path1, setPath1] = useState('');
+  const [path2, setPath2] = useState('');
+  const [sitelinks, setSitelinks] = useState<{ title: string; description: string }[]>([
+    { title: '', description: '' },
+    { title: '', description: '' },
+    { title: '', description: '' },
+    { title: '', description: '' },
+  ]);
+  const [callouts, setCallouts] = useState<string[]>(['', '', '', '']);
   const [imageUrl, setImageUrl] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [ctaText, setCtaText] = useState('Learn More');
@@ -67,54 +76,9 @@ export default function Home() {
     switch (googleAdType) {
       case 'search':
         return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Headlines (max 30 chars)</label>
-              {headlines.map((h, i) => (
-                <input
-                  key={i}
-                  type="text"
-                  value={h}
-                  onChange={(e) => {
-                    const newHeadlines = [...headlines];
-                    newHeadlines[i] = e.target.value;
-                    setHeadlines(newHeadlines);
-                  }}
-                  placeholder={`Headline ${i + 1}`}
-                  maxLength={30}
-                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              ))}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descriptions (max 90 chars)</label>
-              {descriptions.map((d, i) => (
-                <textarea
-                  key={i}
-                  value={d}
-                  onChange={(e) => {
-                    const newDescriptions = [...descriptions];
-                    newDescriptions[i] = e.target.value;
-                    setDescriptions(newDescriptions);
-                  }}
-                  placeholder={`Description ${i + 1}`}
-                  maxLength={90}
-                  rows={2}
-                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Display URL</label>
-                <input
-                  type="text"
-                  value={displayUrl}
-                  onChange={(e) => setDisplayUrl(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+          <div className="space-y-6">
+            {/* Final URL & Business Name */}
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Final URL</label>
                 <input
@@ -124,6 +88,170 @@ export default function Home() {
                   placeholder="https://example.com/page"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Display URL</label>
+                  <input
+                    type="text"
+                    value={displayUrl}
+                    onChange={(e) => setDisplayUrl(e.target.value)}
+                    placeholder="example.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Path 1</label>
+                  <input
+                    type="text"
+                    value={path1}
+                    onChange={(e) => setPath1(e.target.value)}
+                    placeholder="products"
+                    maxLength={15}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Path 2</label>
+                  <input
+                    type="text"
+                    value={path2}
+                    onChange={(e) => setPath2(e.target.value)}
+                    placeholder="sale"
+                    maxLength={15}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
+                <input
+                  type="text"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Your Business Name"
+                  maxLength={25}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Headlines Section */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700">Headlines (max 30 chars each)</label>
+                <span className="text-xs text-gray-500">{headlines.filter(h => h.trim()).length}/15 added</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2">
+                {headlines.map((h, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-5">{i + 1}.</span>
+                    <input
+                      type="text"
+                      value={h}
+                      onChange={(e) => {
+                        const newHeadlines = [...headlines];
+                        newHeadlines[i] = e.target.value;
+                        setHeadlines(newHeadlines);
+                      }}
+                      placeholder={`Headline ${i + 1}${i < 3 ? ' (required)' : ''}`}
+                      maxLength={30}
+                      className={`flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm ${
+                        i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
+                      }`}
+                    />
+                    <span className="text-xs text-gray-400 w-8">{h.length}/30</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Descriptions Section */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700">Descriptions (max 90 chars each)</label>
+                <span className="text-xs text-gray-500">{descriptions.filter(d => d.trim()).length}/4 added</span>
+              </div>
+              <div className="space-y-2">
+                {descriptions.map((d, i) => (
+                  <div key={i}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-gray-400 w-5 pt-2">{i + 1}.</span>
+                      <textarea
+                        value={d}
+                        onChange={(e) => {
+                          const newDescriptions = [...descriptions];
+                          newDescriptions[i] = e.target.value;
+                          setDescriptions(newDescriptions);
+                        }}
+                        placeholder={`Description ${i + 1}${i < 2 ? ' (required)' : ''}`}
+                        maxLength={90}
+                        rows={2}
+                        className={`flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                          i < 2 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+                    <div className="text-right text-xs text-gray-400 mr-1">{d.length}/90</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sitelinks Section */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Sitelinks (optional)</label>
+              <div className="space-y-3">
+                {sitelinks.map((link, i) => (
+                  <div key={i} className="bg-gray-50 p-3 rounded-lg">
+                    <input
+                      type="text"
+                      value={link.title}
+                      onChange={(e) => {
+                        const newSitelinks = [...sitelinks];
+                        newSitelinks[i] = { ...newSitelinks[i], title: e.target.value };
+                        setSitelinks(newSitelinks);
+                      }}
+                      placeholder={`Sitelink ${i + 1} title`}
+                      maxLength={25}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm mb-2"
+                    />
+                    <input
+                      type="text"
+                      value={link.description}
+                      onChange={(e) => {
+                        const newSitelinks = [...sitelinks];
+                        newSitelinks[i] = { ...newSitelinks[i], description: e.target.value };
+                        setSitelinks(newSitelinks);
+                      }}
+                      placeholder="Description (optional)"
+                      maxLength={35}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Callouts Section */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Callouts (optional)</label>
+              <div className="grid grid-cols-2 gap-2">
+                {callouts.map((callout, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    value={callout}
+                    onChange={(e) => {
+                      const newCallouts = [...callouts];
+                      newCallouts[i] = e.target.value;
+                      setCallouts(newCallouts);
+                    }}
+                    placeholder={`Callout ${i + 1}`}
+                    maxLength={25}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -665,7 +793,18 @@ export default function Home() {
   const renderGooglePreview = () => {
     switch (googleAdType) {
       case 'search':
-        return <GoogleSearchAd headlines={headlines} descriptions={descriptions} displayUrl={displayUrl} finalUrl={finalUrl} />;
+        return (
+          <GoogleSearchAd
+            headlines={headlines}
+            descriptions={descriptions}
+            displayUrl={displayUrl}
+            path1={path1}
+            path2={path2}
+            businessName={businessName}
+            sitelinks={sitelinks}
+            callouts={callouts}
+          />
+        );
       case 'display':
         return <GoogleDisplayAd headline={headline} description={description} businessName={businessName} imageUrl={imageUrl} ctaText={ctaText} size={displaySize} />;
       case 'youtube-instream':

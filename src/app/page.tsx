@@ -2181,7 +2181,8 @@ export default function Home() {
         { name: 'Snapchat Political Ads Library', url: 'https://www.snap.com/en-US/political-ads', description: 'Political and advocacy ads on Snapchat' },
         { name: 'Pinterest Ads Manager', url: 'https://ads.pinterest.com/', description: 'Pinterest advertising platform' },
         { name: 'Amazon Advertising', url: 'https://advertising.amazon.com/', description: 'Amazon advertising platform' },
-        { name: 'Microsoft Advertising', url: 'https://ads.microsoft.com/', description: 'Bing & Microsoft advertising' },
+        { name: 'Microsoft Ad Library', url: 'https://adlibrary.ads.microsoft.com/', description: 'Search ads running on Bing, MSN & Microsoft network' },
+        { name: 'Microsoft Advertising', url: 'https://ads.microsoft.com/', description: 'Bing & Microsoft advertising platform' },
       ]
     },
     {

@@ -238,3 +238,51 @@ body {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.3), transparent);
 }
+
+/* Dark Mode */
+.dark {
+  --background: #0f0f1a;
+  --foreground: #f0f0f0;
+}
+
+.dark .gradient-bg {
+  background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+}
+
+.dark .glass {
+  background: rgba(30, 30, 50, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass-dark {
+  background: rgba(20, 20, 40, 0.95);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Character Count Warning */
+.char-warning {
+  color: #f59e0b;
+}
+
+.char-danger {
+  color: #ef4444;
+}
+
+.char-ok {
+  color: #10b981;
+}
+
+/* QR Code Container */
+.qr-container {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  display: inline-block;
+}

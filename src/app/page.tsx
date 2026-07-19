@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import GoogleSearchAd from '@/components/previews/GoogleSearchAd';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
@@ -12,9 +14,11 @@ import InstagramFeedAd from '@/components/previews/InstagramFeedAd';
 import InstagramStoryAd from '@/components/previews/InstagramStoryAd';
 import InstagramReelsAd from '@/components/previews/InstagramReelsAd';
 import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
+import TikTokFeedAd from '@/components/previews/TikTokFeedAd';
+import LinkedInFeedAd from '@/components/previews/LinkedInFeedAd';
 import ImageUpload from '@/components/ImageUpload';
 
-type Platform = 'google' | 'meta' | 'utm' | 'library';
+type Platform = 'google' | 'meta' | 'tiktok' | 'linkedin' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover';
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
 
@@ -44,6 +48,18 @@ export default function Home() {
   const [platform, setPlatform] = useState<Platform>('google');
   const [googleAdType, setGoogleAdType] = useState<GoogleAdType>('search');
   const [metaAdType, setMetaAdType] = useState<MetaAdType>('fb-feed');
+
+  // Dark Mode
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Toggle dark mode
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Google Ads State
   const [businessName, setBusinessName] = useState('');
@@ -258,6 +274,56 @@ export default function Home() {
 
   // File input ref for CSV import
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Preview panel ref for export
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Export preview as image
+  const exportAsImage = async () => {
+    if (!previewRef.current) return;
+
+    try {
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+
+      const link = document.createElement('a');
+      link.download = `ad-preview-${platform}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error('Error exporting image:', error);
+      alert('Failed to export image. Please try again.');
+    }
+  };
+
+  // Export preview as PDF
+  const exportAsPDF = async () => {
+    if (!previewRef.current) return;
+
+    try {
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`ad-preview-${platform}-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
+  };
 
   // Get all ad data as object
   const getAdData = () => ({
@@ -722,9 +788,11 @@ export default function Home() {
                         maxLength={30}
                         className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
                           i < 3 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
-                        }`}
+                        } ${h.length >= 30 ? 'border-red-300 bg-red-50' : h.length >= 25 ? 'border-yellow-300 bg-yellow-50' : ''}`}
                       />
-                      <span className="text-xs text-gray-400 w-10 text-right">{h.length}/30</span>
+                      <span className={`text-xs w-10 text-right font-medium ${
+                        h.length >= 30 ? 'text-red-500' : h.length >= 25 ? 'text-yellow-500' : h.length >= 20 ? 'text-green-500' : 'text-gray-400'
+                      }`}>{h.length}/30</span>
                     </div>
                   ))}
                   {visibleHeadlines < 15 && (
@@ -773,9 +841,11 @@ export default function Home() {
                         rows={2}
                         className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
                           i < 2 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
-                        }`}
+                        } ${d.length >= 90 ? 'border-red-300 bg-red-50' : d.length >= 75 ? 'border-yellow-300 bg-yellow-50' : ''}`}
                       />
-                      <span className="text-xs text-gray-400 w-10 text-right pt-2.5">{d.length}/90</span>
+                      <span className={`text-xs w-10 text-right pt-2.5 font-medium ${
+                        d.length >= 90 ? 'text-red-500' : d.length >= 75 ? 'text-yellow-500' : d.length >= 50 ? 'text-green-500' : 'text-gray-400'
+                      }`}>{d.length}/90</span>
                     </div>
                   ))}
                   {visibleDescriptions < 4 && (
@@ -1669,11 +1739,13 @@ export default function Home() {
                       rows={3}
                       className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
                         i === 0 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
-                      }`}
+                      } ${text.length > 125 ? 'border-red-300 bg-red-50' : text.length > 100 ? 'border-yellow-300 bg-yellow-50' : ''}`}
                     />
                   </div>
-                  <div className="text-right text-xs text-gray-400 pr-1">
-                    {text.length} characters {text.length > 125 && <span className="text-orange-500">(truncated after 125)</span>}
+                  <div className={`text-right text-xs pr-1 font-medium ${
+                    text.length > 125 ? 'text-red-500' : text.length > 100 ? 'text-yellow-500' : text.length > 50 ? 'text-green-500' : 'text-gray-400'
+                  }`}>
+                    {text.length}/125 characters {text.length > 125 && <span className="text-red-500">(will be truncated)</span>}
                   </div>
                 </div>
               ))}
@@ -1727,9 +1799,14 @@ export default function Home() {
                       if (i === 0) setHeadline(e.target.value);
                     }}
                     placeholder={`Headline ${i + 1}`}
-                    className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    maxLength={40}
+                    className={`flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                      h.length >= 40 ? 'border-red-300 bg-red-50' : h.length >= 35 ? 'border-yellow-300 bg-yellow-50' : ''
+                    }`}
                   />
-                  <span className="text-xs text-gray-400 w-10 text-right">{h.length}/40</span>
+                  <span className={`text-xs w-10 text-right font-medium ${
+                    h.length >= 40 ? 'text-red-500' : h.length >= 35 ? 'text-yellow-500' : h.length >= 20 ? 'text-green-500' : 'text-gray-400'
+                  }`}>{h.length}/40</span>
                 </div>
               ))}
               {visibleMetaHeadlines < 5 && (
@@ -1862,6 +1939,210 @@ export default function Home() {
           </div>
         </div>
       </div>
+    );
+  };
+
+  // TikTok Editor
+  const renderTikTokEditor = () => {
+    return (
+      <div className="space-y-6">
+        {/* Profile Section */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Profile</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="@yourusername"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+            <ImageUpload
+              value={pageImageUrl}
+              onChange={setPageImageUrl}
+              label="Profile Picture"
+              aspectRatio="1:1"
+            />
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Ad Content</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Caption</label>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Your TikTok ad caption..."
+                rows={3}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              />
+              <span className={`text-xs ${caption.length > 150 ? 'text-red-500' : 'text-gray-400'}`}>
+                {caption.length}/150 recommended
+              </span>
+            </div>
+            <ImageUpload
+              value={metaImageUrl}
+              onChange={setMetaImageUrl}
+              label="Video Thumbnail / Image"
+              aspectRatio="9:16"
+            />
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Call to Action</h3>
+          <select
+            value={metaCtaText}
+            onChange={(e) => setMetaCtaText(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+          >
+            <option value="Learn More">Learn More</option>
+            <option value="Shop Now">Shop Now</option>
+            <option value="Sign Up">Sign Up</option>
+            <option value="Download">Download</option>
+            <option value="Contact Us">Contact Us</option>
+            <option value="Watch More">Watch More</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
+  // TikTok Preview
+  const renderTikTokPreview = () => {
+    return (
+      <TikTokFeedAd
+        username={username || 'username'}
+        caption={caption}
+        imageUrl={metaImageUrl}
+        ctaText={metaCtaText}
+        profileImageUrl={pageImageUrl}
+      />
+    );
+  };
+
+  // LinkedIn Editor
+  const renderLinkedInEditor = () => {
+    return (
+      <div className="space-y-6">
+        {/* Company Section */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Company Profile</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Company Name</label>
+              <input
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Your Company Name"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+            <ImageUpload
+              value={logoUrl}
+              onChange={setLogoUrl}
+              label="Company Logo"
+              aspectRatio="1:1"
+            />
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Ad Content</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Intro Text</label>
+              <textarea
+                value={primaryText}
+                onChange={(e) => setPrimaryText(e.target.value)}
+                placeholder="Share your professional message..."
+                rows={3}
+                className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                  primaryText.length > 600 ? 'border-red-300 bg-red-50' : primaryText.length > 500 ? 'border-yellow-300 bg-yellow-50' : ''
+                }`}
+              />
+              <span className={`text-xs ${primaryText.length > 600 ? 'text-red-500' : primaryText.length > 500 ? 'text-yellow-500' : 'text-gray-400'}`}>
+                {primaryText.length}/600 characters
+              </span>
+            </div>
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Headline</label>
+              <input
+                type="text"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                placeholder="Your attention-grabbing headline"
+                maxLength={200}
+                className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                  headline.length > 150 ? 'border-yellow-300 bg-yellow-50' : ''
+                }`}
+              />
+              <span className={`text-xs ${headline.length > 150 ? 'text-yellow-500' : 'text-gray-400'}`}>
+                {headline.length}/200 characters
+              </span>
+            </div>
+            <ImageUpload
+              value={imageUrl}
+              onChange={setImageUrl}
+              label="Ad Image"
+              aspectRatio="1.91:1"
+            />
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Destination URL</label>
+              <input
+                type="url"
+                value={linkDisplay}
+                onChange={(e) => setLinkDisplay(e.target.value)}
+                placeholder="company.com/landing-page"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Call to Action</h3>
+          <select
+            value={ctaText}
+            onChange={(e) => setCtaText(e.target.value)}
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+          >
+            <option value="Learn more">Learn more</option>
+            <option value="Sign up">Sign up</option>
+            <option value="Subscribe">Subscribe</option>
+            <option value="Register">Register</option>
+            <option value="Download">Download</option>
+            <option value="Get quote">Get quote</option>
+            <option value="Apply now">Apply now</option>
+            <option value="Contact us">Contact us</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
+  // LinkedIn Preview
+  const renderLinkedInPreview = () => {
+    return (
+      <LinkedInFeedAd
+        companyName={businessName || 'Company Name'}
+        companyLogoUrl={logoUrl}
+        headline={headline}
+        introText={primaryText}
+        imageUrl={imageUrl}
+        ctaText={ctaText}
+        websiteUrl={linkDisplay}
+      />
     );
   };
 
@@ -2052,6 +2333,30 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
                 Test Link
+              </a>
+            </div>
+          )}
+
+          {/* QR Code */}
+          {generatedUrl && (
+            <div className="mt-6 flex flex-col items-center">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Scan QR Code</h4>
+              <div className="qr-container shadow-lg">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(generatedUrl)}`}
+                  alt="QR Code"
+                  className="w-36 h-36"
+                />
+              </div>
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(generatedUrl)}&format=png`}
+                download="utm-qr-code.png"
+                className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download QR
               </a>
             </div>
           )}
@@ -2400,6 +2705,22 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700 transition-all duration-300"
+                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {darkMode ? (
+                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                  </svg>
+                )}
+              </button>
               {/* Save to Browser */}
               <button
                 onClick={saveToLocalStorage}
@@ -2449,6 +2770,34 @@ export default function Home() {
               Meta Ads
             </button>
             <button
+              onClick={() => setPlatform('tiktok')}
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
+                platform === 'tiktok'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill={platform === 'tiktok' ? '#000000' : '#9CA3AF'}>
+                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+              </svg>
+              TikTok
+              <span className="badge-new">New</span>
+            </button>
+            <button
+              onClick={() => setPlatform('linkedin')}
+              className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
+                platform === 'linkedin'
+                  ? 'text-indigo-600 active'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill={platform === 'linkedin' ? '#0A66C2' : '#9CA3AF'}>
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+              LinkedIn
+              <span className="badge-new">New</span>
+            </button>
+            <button
               onClick={() => setPlatform('utm')}
               className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
                 platform === 'utm'
@@ -2479,7 +2828,7 @@ export default function Home() {
       </div>
 
       {/* Sub Tabs */}
-      {platform !== 'utm' && platform !== 'library' && (
+      {(platform === 'google' || platform === 'meta') && (
         <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
             <nav className="flex gap-2 overflow-x-auto py-3">
@@ -2538,16 +2887,53 @@ export default function Home() {
               <h2 className="text-lg font-bold gradient-text mb-6">
                 {platform === 'utm' ? 'UTM Parameters' : 'Ad Content'}
               </h2>
-              {platform === 'google' ? renderGoogleEditor() : platform === 'meta' ? renderMetaEditor() : renderUtmEditor()}
+              {platform === 'google' ? renderGoogleEditor() :
+               platform === 'meta' ? renderMetaEditor() :
+               platform === 'tiktok' ? renderTikTokEditor() :
+               platform === 'linkedin' ? renderLinkedInEditor() :
+               renderUtmEditor()}
             </div>
 
             {/* Preview Panel */}
             <div className="glass rounded-2xl shadow-xl p-6 card-hover border border-white/20">
-              <h2 className="text-lg font-bold gradient-text mb-6">
-                {platform === 'utm' ? 'Generated URL' : 'Preview'}
-              </h2>
-              <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 overflow-auto border border-gray-100'}`}>
-                {platform === 'google' ? renderGooglePreview() : platform === 'meta' ? renderMetaPreview() : renderUtmPreview()}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold gradient-text">
+                  {platform === 'utm' ? 'Generated URL' : 'Preview'}
+                </h2>
+                {platform !== 'utm' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={exportAsImage}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      title="Export as PNG"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      PNG
+                    </button>
+                    <button
+                      onClick={exportAsPDF}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      title="Export as PDF"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div
+                ref={previewRef}
+                className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 overflow-auto border border-gray-100'}`}
+              >
+                {platform === 'google' ? renderGooglePreview() :
+                 platform === 'meta' ? renderMetaPreview() :
+                 platform === 'tiktok' ? renderTikTokPreview() :
+                 platform === 'linkedin' ? renderLinkedInPreview() :
+                 renderUtmPreview()}
               </div>
             </div>
           </div>

@@ -514,10 +514,10 @@ export default function Home() {
                     <select
                       value={promotion.occasion}
                       onChange={(e) => setPromotion({ ...promotion, occasion: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
                     >
                       {promotionOccasions.map((occasion) => (
-                        <option key={occasion} value={occasion}>{occasion}</option>
+                        <option key={occasion} value={occasion} className="text-gray-900">{occasion}</option>
                       ))}
                     </select>
                   </div>
@@ -527,11 +527,11 @@ export default function Home() {
                       <select
                         value={promotion.promotionType}
                         onChange={(e) => setPromotion({ ...promotion, promotionType: e.target.value as 'monetary' | 'percentage' | 'none' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
                       >
-                        <option value="none">None</option>
-                        <option value="percentage">Percent off</option>
-                        <option value="monetary">Money off</option>
+                        <option value="none" className="text-gray-900">None</option>
+                        <option value="percentage" className="text-gray-900">Percent off</option>
+                        <option value="monetary" className="text-gray-900">Money off</option>
                       </select>
                     </div>
                     <div>
@@ -705,10 +705,10 @@ export default function Home() {
                     <select
                       value={snippetHeader}
                       onChange={(e) => setSnippetHeader(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
                     >
                       {snippetHeaders.map((header) => (
-                        <option key={header} value={header}>{header}</option>
+                        <option key={header} value={header} className="text-gray-900">{header}</option>
                       ))}
                     </select>
                   </div>
@@ -743,11 +743,11 @@ export default function Home() {
               <select
                 value={displaySize}
                 onChange={(e) => setDisplaySize(e.target.value as typeof displaySize)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               >
-                <option value="medium-rectangle">Medium Rectangle (300x250)</option>
-                <option value="leaderboard">Leaderboard (728x90)</option>
-                <option value="large-rectangle">Large Rectangle (336x280)</option>
+                <option value="medium-rectangle" className="text-gray-900">Medium Rectangle (300x250)</option>
+                <option value="leaderboard" className="text-gray-900">Leaderboard (728x90)</option>
+                <option value="large-rectangle" className="text-gray-900">Large Rectangle (336x280)</option>
               </select>
             </div>
             <div>
@@ -1067,10 +1067,10 @@ export default function Home() {
                     <select
                       value={lifecycleStrategy}
                       onChange={(e) => setLifecycleStrategy(e.target.value as 'all' | 'new-customers')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
                     >
-                      <option value="all">Get conversions from all audiences</option>
-                      <option value="new-customers">Acquire new customers only</option>
+                      <option value="all" className="text-gray-900">Get conversions from all audiences</option>
+                      <option value="new-customers" className="text-gray-900">Acquire new customers only</option>
                     </select>
                   </div>
                 </>
@@ -1377,10 +1377,10 @@ export default function Home() {
           <select
             value={metaCtaText}
             onChange={(e) => setMetaCtaText(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
           >
             {metaCtaOptions.map((cta) => (
-              <option key={cta} value={cta}>{cta}</option>
+              <option key={cta} value={cta} className="text-gray-900">{cta}</option>
             ))}
           </select>
         </div>

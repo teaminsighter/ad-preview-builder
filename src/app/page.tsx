@@ -2523,8 +2523,8 @@ export default function Home() {
           /* Ad Library - Full Width */
           <div>
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold gradient-text inline-block">Ad Library Resources</h2>
-              <p className="text-sm text-gray-600 mt-2">Browse competitor ads and find creative inspiration across all major platforms</p>
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Ad Library Resources</h2>
+              <p className="text-sm text-white/80 mt-2">Browse competitor ads and find creative inspiration across all major platforms</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 card-grid">
               {renderAdLibrary()}

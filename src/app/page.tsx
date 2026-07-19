@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import GoogleSearchAd from '@/components/previews/GoogleSearchAd';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
@@ -196,6 +196,245 @@ export default function Home() {
     'Send Message', 'Send WhatsApp Message', 'Subscribe', 'Watch More', 'Use App',
     'Open Link', 'Save', 'Start Order', 'View Event', 'Vote Now'
   ];
+
+  // File input ref for CSV import
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get all ad data as object
+  const getAdData = () => ({
+    // Settings
+    platform,
+    googleAdType,
+    metaAdType,
+    // Google Ads
+    businessName,
+    businessLogoUrl,
+    headlines,
+    descriptions,
+    displayUrl,
+    finalUrl,
+    path1,
+    path2,
+    sitelinks,
+    callouts,
+    snippetHeader,
+    snippetValues,
+    phoneNumber,
+    priceAssets,
+    promotion,
+    searchImageUrls,
+    // Meta Ads
+    pageName,
+    instagramAccount,
+    pageImageUrl,
+    primaryTexts,
+    metaHeadlines,
+    metaDescription,
+    metaMediaUrls,
+    metaCtaText,
+    metaDestinationUrl,
+    linkDisplay,
+    advantagePlusCreative,
+    textGeneration,
+    optimizeTextPerPerson,
+    lifecycleStrategy,
+  });
+
+  // Save to localStorage
+  const saveToLocalStorage = () => {
+    const data = getAdData();
+    localStorage.setItem('adPreviewData', JSON.stringify(data));
+    alert('Saved to browser storage!');
+  };
+
+  // Load from localStorage
+  const loadFromLocalStorage = () => {
+    const saved = localStorage.getItem('adPreviewData');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        loadAdData(data);
+        alert('Loaded from browser storage!');
+      } catch {
+        alert('Error loading saved data');
+      }
+    } else {
+      alert('No saved data found');
+    }
+  };
+
+  // Load ad data from object
+  const loadAdData = (data: Record<string, unknown>) => {
+    if (data.platform) setPlatform(data.platform as Platform);
+    if (data.googleAdType) setGoogleAdType(data.googleAdType as GoogleAdType);
+    if (data.metaAdType) setMetaAdType(data.metaAdType as MetaAdType);
+    if (data.businessName) setBusinessName(data.businessName as string);
+    if (data.businessLogoUrl) setBusinessLogoUrl(data.businessLogoUrl as string);
+    if (data.headlines) setHeadlines(data.headlines as string[]);
+    if (data.descriptions) setDescriptions(data.descriptions as string[]);
+    if (data.displayUrl) setDisplayUrl(data.displayUrl as string);
+    if (data.finalUrl) setFinalUrl(data.finalUrl as string);
+    if (data.path1) setPath1(data.path1 as string);
+    if (data.path2) setPath2(data.path2 as string);
+    if (data.sitelinks) setSitelinks(data.sitelinks as typeof sitelinks);
+    if (data.callouts) setCallouts(data.callouts as string[]);
+    if (data.snippetHeader) setSnippetHeader(data.snippetHeader as string);
+    if (data.snippetValues) setSnippetValues(data.snippetValues as string[]);
+    if (data.phoneNumber) setPhoneNumber(data.phoneNumber as string);
+    if (data.priceAssets) setPriceAssets(data.priceAssets as typeof priceAssets);
+    if (data.promotion) setPromotion(data.promotion as typeof promotion);
+    if (data.searchImageUrls) setSearchImageUrls(data.searchImageUrls as string[]);
+    if (data.pageName) setPageName(data.pageName as string);
+    if (data.instagramAccount) setInstagramAccount(data.instagramAccount as string);
+    if (data.pageImageUrl) setPageImageUrl(data.pageImageUrl as string);
+    if (data.primaryTexts) setPrimaryTexts(data.primaryTexts as string[]);
+    if (data.metaHeadlines) setMetaHeadlines(data.metaHeadlines as string[]);
+    if (data.metaDescription) setMetaDescription(data.metaDescription as string);
+    if (data.metaMediaUrls) setMetaMediaUrls(data.metaMediaUrls as string[]);
+    if (data.metaCtaText) setMetaCtaText(data.metaCtaText as string);
+    if (data.metaDestinationUrl) setMetaDestinationUrl(data.metaDestinationUrl as string);
+    if (data.linkDisplay) setLinkDisplay(data.linkDisplay as string);
+    if (data.advantagePlusCreative !== undefined) setAdvantagePlusCreative(data.advantagePlusCreative as boolean);
+    if (data.textGeneration !== undefined) setTextGeneration(data.textGeneration as boolean);
+    if (data.optimizeTextPerPerson !== undefined) setOptimizeTextPerPerson(data.optimizeTextPerPerson as boolean);
+    if (data.lifecycleStrategy) setLifecycleStrategy(data.lifecycleStrategy as 'all' | 'new-customers');
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const data = getAdData();
+    const rows: string[][] = [];
+
+    // Header row
+    rows.push(['Field', 'Value']);
+
+    // Flatten data for CSV
+    rows.push(['Platform', data.platform]);
+    rows.push(['Google Ad Type', data.googleAdType]);
+    rows.push(['Meta Ad Type', data.metaAdType]);
+    rows.push(['Business Name', data.businessName]);
+    rows.push(['Final URL', data.finalUrl]);
+    rows.push(['Display URL', data.displayUrl]);
+    rows.push(['Path 1', data.path1]);
+    rows.push(['Path 2', data.path2]);
+    rows.push(['Phone Number', data.phoneNumber]);
+
+    // Headlines
+    data.headlines.forEach((h, i) => {
+      if (h) rows.push([`Headline ${i + 1}`, h]);
+    });
+
+    // Descriptions
+    data.descriptions.forEach((d, i) => {
+      if (d) rows.push([`Description ${i + 1}`, d]);
+    });
+
+    // Callouts
+    data.callouts.forEach((c, i) => {
+      if (c) rows.push([`Callout ${i + 1}`, c]);
+    });
+
+    // Sitelinks
+    data.sitelinks.forEach((s, i) => {
+      if (s.title) {
+        rows.push([`Sitelink ${i + 1} Title`, s.title]);
+        if (s.description1) rows.push([`Sitelink ${i + 1} Desc 1`, s.description1]);
+        if (s.description2) rows.push([`Sitelink ${i + 1} Desc 2`, s.description2]);
+      }
+    });
+
+    // Structured Snippets
+    rows.push(['Snippet Header', data.snippetHeader]);
+    data.snippetValues.forEach((v, i) => {
+      if (v) rows.push([`Snippet Value ${i + 1}`, v]);
+    });
+
+    // Meta Ads
+    rows.push(['Page Name', data.pageName]);
+    rows.push(['Instagram Account', data.instagramAccount]);
+    rows.push(['Meta CTA', data.metaCtaText]);
+    rows.push(['Destination URL', data.metaDestinationUrl]);
+    rows.push(['Display Link', data.linkDisplay]);
+
+    data.primaryTexts.forEach((t, i) => {
+      if (t) rows.push([`Primary Text ${i + 1}`, t]);
+    });
+
+    data.metaHeadlines.forEach((h, i) => {
+      if (h) rows.push([`Meta Headline ${i + 1}`, h]);
+    });
+
+    rows.push(['Meta Description', data.metaDescription]);
+
+    // Convert to CSV string
+    const csvContent = rows.map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ad-preview-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to JSON (full data)
+  const exportToJSON = () => {
+    const data = getAdData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ad-preview-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import from JSON
+  const importFromJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        loadAdData(data);
+        alert('Imported successfully!');
+      } catch {
+        alert('Error reading file. Please use a valid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Auto-load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('adPreviewData');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        loadAdData(data);
+      } catch {
+        // Ignore errors on auto-load
+      }
+    }
+  }, []);
+
+  // Auto-save to localStorage on data change
+  useEffect(() => {
+    const data = getAdData();
+    localStorage.setItem('adPreviewData', JSON.stringify(data));
+  }, [businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
+      sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
+      promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
+      primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaCtaText,
+      metaDestinationUrl, linkDisplay, platform, googleAdType, metaAdType]);
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {
@@ -1474,11 +1713,72 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Hidden file input for import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={importFromJSON}
+        accept=".json"
+        className="hidden"
+      />
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Ad Preview Builder</h1>
-          <p className="text-gray-600 text-sm">Preview your ads before publishing to Google Ads & Meta Ads</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Ad Preview Builder</h1>
+              <p className="text-gray-600 text-sm">Preview your ads before publishing to Google Ads & Meta Ads</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Import */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Import
+              </button>
+              {/* Export Dropdown */}
+              <div className="relative group">
+                <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                  <button
+                    onClick={exportToJSON}
+                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                  >
+                    Export as JSON
+                  </button>
+                  <button
+                    onClick={exportToCSV}
+                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-b-lg"
+                  >
+                    Export as CSV
+                  </button>
+                </div>
+              </div>
+              {/* Save to Browser */}
+              <button
+                onClick={saveToLocalStorage}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                Save
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 

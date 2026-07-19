@@ -42,23 +42,71 @@ export default function Home() {
 
   // Google Ads State
   const [businessName, setBusinessName] = useState('');
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [headlines, setHeadlines] = useState<string[]>(Array(15).fill(''));
   const [descriptions, setDescriptions] = useState<string[]>(Array(4).fill(''));
   const [displayUrl, setDisplayUrl] = useState('');
   const [finalUrl, setFinalUrl] = useState('');
   const [path1, setPath1] = useState('');
   const [path2, setPath2] = useState('');
-  const [sitelinks, setSitelinks] = useState<{ title: string; description: string }[]>([
-    { title: '', description: '' },
-    { title: '', description: '' },
-    { title: '', description: '' },
-    { title: '', description: '' },
-  ]);
-  const [callouts, setCallouts] = useState<string[]>(['', '', '', '']);
+
+  // Sitelinks (up to 8, with 25 char title, 35 char descriptions)
+  const [sitelinks, setSitelinks] = useState<{ title: string; description1: string; description2: string; url: string }[]>(
+    Array(8).fill(null).map(() => ({ title: '', description1: '', description2: '', url: '' }))
+  );
+
+  // Callouts (up to 10, 25 chars each)
+  const [callouts, setCallouts] = useState<string[]>(Array(10).fill(''));
+
+  // Structured Snippets
+  const [snippetHeader, setSnippetHeader] = useState('Types');
+  const [snippetValues, setSnippetValues] = useState<string[]>(Array(10).fill(''));
+
+  // Call Asset
+  const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Price Assets (min 3, up to 8)
+  const [priceAssets, setPriceAssets] = useState<{ header: string; description: string; price: string; unit: string }[]>(
+    Array(5).fill(null).map(() => ({ header: '', description: '', price: '', unit: '' }))
+  );
+
+  // Promotion Asset
+  const [promotion, setPromotion] = useState({
+    occasion: 'None',
+    promotionType: 'none' as 'monetary' | 'percentage' | 'none',
+    promotionValue: '',
+    item: '',
+  });
+
+  // Image Assets (up to 4)
+  const [searchImageUrls, setSearchImageUrls] = useState<string[]>(['', '', '', '']);
+
+  // Active editor section
+  const [activeAssetSection, setActiveAssetSection] = useState<string>('headlines');
+
   const [imageUrl, setImageUrl] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [ctaText, setCtaText] = useState('Learn More');
   const [displaySize, setDisplaySize] = useState<'medium-rectangle' | 'leaderboard' | 'large-rectangle'>('medium-rectangle');
+
+  // Structured snippet header options
+  const snippetHeaders = [
+    'Amenities', 'Brands', 'Courses', 'Degree programs', 'Destinations',
+    'Featured hotels', 'Insurance coverage', 'Models', 'Neighborhoods',
+    'Service catalog', 'Shows', 'Styles', 'Types'
+  ];
+
+  // Promotion occasions
+  const promotionOccasions = [
+    'None', 'New Year', 'Valentine\'s Day', 'Easter', 'Mother\'s Day',
+    'Father\'s Day', 'Labor Day', 'Back to School', 'Halloween',
+    'Black Friday', 'Cyber Monday', 'Christmas', 'Boxing Day',
+    'Chinese New Year', 'Carnival', 'Diwali', 'Eid', 'Independence Day',
+    'End of Season', 'Winter Sale', 'Summer Sale', 'Fall Sale', 'Spring Sale'
+  ];
+
+  // Price units
+  const priceUnits = ['', 'hour', 'day', 'week', 'month', 'year', 'night', 'item', 'session'];
 
   // Meta Ads State
   const [pageName, setPageName] = useState('');
@@ -76,184 +124,457 @@ export default function Home() {
     switch (googleAdType) {
       case 'search':
         return (
-          <div className="space-y-6">
-            {/* Final URL & Business Name */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Final URL</label>
-                <input
-                  type="text"
-                  value={finalUrl}
-                  onChange={(e) => setFinalUrl(e.target.value)}
-                  placeholder="https://example.com/page"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Display URL</label>
-                  <input
-                    type="text"
-                    value={displayUrl}
-                    onChange={(e) => setDisplayUrl(e.target.value)}
-                    placeholder="example.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Path 1</label>
-                  <input
-                    type="text"
-                    value={path1}
-                    onChange={(e) => setPath1(e.target.value)}
-                    placeholder="products"
-                    maxLength={15}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Path 2</label>
-                  <input
-                    type="text"
-                    value={path2}
-                    onChange={(e) => setPath2(e.target.value)}
-                    placeholder="sale"
-                    maxLength={15}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  placeholder="Your Business Name"
-                  maxLength={25}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+          <div className="space-y-4">
+            {/* Asset Section Tabs */}
+            <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-2">
+              {[
+                { id: 'headlines', label: 'Headlines & Descriptions' },
+                { id: 'urls', label: 'URLs & Business' },
+                { id: 'sitelinks', label: 'Sitelinks' },
+                { id: 'callouts', label: 'Callouts' },
+                { id: 'snippets', label: 'Structured Snippets' },
+                { id: 'call', label: 'Call' },
+                { id: 'price', label: 'Price' },
+                { id: 'promotion', label: 'Promotion' },
+                { id: 'images', label: 'Images' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveAssetSection(tab.id)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    activeAssetSection === tab.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {/* Headlines Section */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-gray-700">Headlines (max 30 chars each)</label>
-                <span className="text-xs text-gray-500">{headlines.filter(h => h.trim()).length}/15 added</span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2">
-                {headlines.map((h, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 w-5">{i + 1}.</span>
-                    <input
-                      type="text"
-                      value={h}
-                      onChange={(e) => {
-                        const newHeadlines = [...headlines];
-                        newHeadlines[i] = e.target.value;
-                        setHeadlines(newHeadlines);
-                      }}
-                      placeholder={`Headline ${i + 1}${i < 3 ? ' (required)' : ''}`}
-                      maxLength={30}
-                      className={`flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm ${
-                        i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
-                      }`}
-                    />
-                    <span className="text-xs text-gray-400 w-8">{h.length}/30</span>
+            {/* Headlines & Descriptions Section */}
+            {activeAssetSection === 'headlines' && (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">Headlines (30 chars max)</label>
+                    <span className="text-xs text-gray-500">{headlines.filter(h => h.trim()).length}/15 added</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Descriptions Section */}
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-gray-700">Descriptions (max 90 chars each)</label>
-                <span className="text-xs text-gray-500">{descriptions.filter(d => d.trim()).length}/4 added</span>
-              </div>
-              <div className="space-y-2">
-                {descriptions.map((d, i) => (
-                  <div key={i}>
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs text-gray-400 w-5 pt-2">{i + 1}.</span>
-                      <textarea
-                        value={d}
-                        onChange={(e) => {
-                          const newDescriptions = [...descriptions];
-                          newDescriptions[i] = e.target.value;
-                          setDescriptions(newDescriptions);
-                        }}
-                        placeholder={`Description ${i + 1}${i < 2 ? ' (required)' : ''}`}
-                        maxLength={90}
-                        rows={2}
-                        className={`flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
-                          i < 2 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
-                        }`}
-                      />
-                    </div>
-                    <div className="text-right text-xs text-gray-400 mr-1">{d.length}/90</div>
+                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                    {headlines.map((h, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-4">{i + 1}</span>
+                        <input
+                          type="text"
+                          value={h}
+                          onChange={(e) => {
+                            const newHeadlines = [...headlines];
+                            newHeadlines[i] = e.target.value;
+                            setHeadlines(newHeadlines);
+                          }}
+                          placeholder={`Headline ${i + 1}${i < 3 ? ' *' : ''}`}
+                          maxLength={30}
+                          className={`flex-1 px-3 py-1.5 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm ${
+                            i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
+                          }`}
+                        />
+                        <span className="text-xs text-gray-400 w-7">{h.length}/30</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">Descriptions (90 chars max)</label>
+                    <span className="text-xs text-gray-500">{descriptions.filter(d => d.trim()).length}/4 added</span>
+                  </div>
+                  <div className="space-y-2">
+                    {descriptions.map((d, i) => (
+                      <div key={i}>
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-400 w-4 pt-2">{i + 1}</span>
+                          <textarea
+                            value={d}
+                            onChange={(e) => {
+                              const newDescriptions = [...descriptions];
+                              newDescriptions[i] = e.target.value;
+                              setDescriptions(newDescriptions);
+                            }}
+                            placeholder={`Description ${i + 1}${i < 2 ? ' *' : ''}`}
+                            maxLength={90}
+                            rows={2}
+                            className={`flex-1 px-3 py-1.5 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                              i < 2 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
+                            }`}
+                          />
+                          <span className="text-xs text-gray-400 w-7 pt-2">{d.length}/90</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Sitelinks Section */}
-            <div className="border-t pt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Sitelinks (optional)</label>
-              <div className="space-y-3">
-                {sitelinks.map((link, i) => (
-                  <div key={i} className="bg-gray-50 p-3 rounded-lg">
+            {/* URLs & Business Section */}
+            {activeAssetSection === 'urls' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Final URL *</label>
+                  <input
+                    type="url"
+                    value={finalUrl}
+                    onChange={(e) => setFinalUrl(e.target.value)}
+                    placeholder="https://example.com/landing-page"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Display URL</label>
                     <input
                       type="text"
-                      value={link.title}
-                      onChange={(e) => {
-                        const newSitelinks = [...sitelinks];
-                        newSitelinks[i] = { ...newSitelinks[i], title: e.target.value };
-                        setSitelinks(newSitelinks);
-                      }}
-                      placeholder={`Sitelink ${i + 1} title`}
-                      maxLength={25}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm mb-2"
-                    />
-                    <input
-                      type="text"
-                      value={link.description}
-                      onChange={(e) => {
-                        const newSitelinks = [...sitelinks];
-                        newSitelinks[i] = { ...newSitelinks[i], description: e.target.value };
-                        setSitelinks(newSitelinks);
-                      }}
-                      placeholder="Description (optional)"
-                      maxLength={35}
+                      value={displayUrl}
+                      onChange={(e) => setDisplayUrl(e.target.value)}
+                      placeholder="example.com"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                   </div>
-                ))}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Path 1 (15)</label>
+                    <input
+                      type="text"
+                      value={path1}
+                      onChange={(e) => setPath1(e.target.value)}
+                      placeholder="products"
+                      maxLength={15}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Path 2 (15)</label>
+                    <input
+                      type="text"
+                      value={path2}
+                      onChange={(e) => setPath2(e.target.value)}
+                      placeholder="sale"
+                      maxLength={15}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name (25 chars)</label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Your Business Name"
+                    maxLength={25}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <ImageUpload
+                  label="Business Logo (1:1)"
+                  value={businessLogoUrl}
+                  onChange={setBusinessLogoUrl}
+                  aspectRatio="1:1"
+                />
               </div>
-            </div>
+            )}
+
+            {/* Sitelinks Section */}
+            {activeAssetSection === 'sitelinks' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Add 2-8 sitelinks. Each needs a title (25 chars) and optional descriptions (35 chars each).</p>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                  {sitelinks.map((link, i) => (
+                    <div key={i} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-500">Sitelink {i + 1}</span>
+                        <span className="text-xs text-gray-400">{link.title.length}/25</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={link.title}
+                        onChange={(e) => {
+                          const newSitelinks = [...sitelinks];
+                          newSitelinks[i] = { ...newSitelinks[i], title: e.target.value };
+                          setSitelinks(newSitelinks);
+                        }}
+                        placeholder="Link text (e.g., Free Shipping)"
+                        maxLength={25}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={link.description1}
+                          onChange={(e) => {
+                            const newSitelinks = [...sitelinks];
+                            newSitelinks[i] = { ...newSitelinks[i], description1: e.target.value };
+                            setSitelinks(newSitelinks);
+                          }}
+                          placeholder="Description line 1"
+                          maxLength={35}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={link.description2}
+                          onChange={(e) => {
+                            const newSitelinks = [...sitelinks];
+                            newSitelinks[i] = { ...newSitelinks[i], description2: e.target.value };
+                            setSitelinks(newSitelinks);
+                          }}
+                          placeholder="Description line 2"
+                          maxLength={35}
+                          className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={(e) => {
+                          const newSitelinks = [...sitelinks];
+                          newSitelinks[i] = { ...newSitelinks[i], url: e.target.value };
+                          setSitelinks(newSitelinks);
+                        }}
+                        placeholder="Final URL for this sitelink"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Callouts Section */}
-            <div className="border-t pt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Callouts (optional)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {callouts.map((callout, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    value={callout}
-                    onChange={(e) => {
-                      const newCallouts = [...callouts];
-                      newCallouts[i] = e.target.value;
-                      setCallouts(newCallouts);
-                    }}
-                    placeholder={`Callout ${i + 1}`}
-                    maxLength={25}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
-                ))}
+            {activeAssetSection === 'callouts' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Add up to 10 callouts (25 chars each). Highlight benefits like &quot;Free Shipping&quot; or &quot;24/7 Support&quot;.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {callouts.map((callout, i) => (
+                    <div key={i} className="relative">
+                      <input
+                        type="text"
+                        value={callout}
+                        onChange={(e) => {
+                          const newCallouts = [...callouts];
+                          newCallouts[i] = e.target.value;
+                          setCallouts(newCallouts);
+                        }}
+                        placeholder={`Callout ${i + 1}`}
+                        maxLength={25}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm pr-12"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{callout.length}/25</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Structured Snippets Section */}
+            {activeAssetSection === 'snippets' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Show specific aspects of your products/services. Select a header and add 3-10 values (25 chars each).</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Header</label>
+                  <select
+                    value={snippetHeader}
+                    onChange={(e) => setSnippetHeader(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    {snippetHeaders.map((header) => (
+                      <option key={header} value={header}>{header}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Values</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {snippetValues.map((value, i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        value={value}
+                        onChange={(e) => {
+                          const newValues = [...snippetValues];
+                          newValues[i] = e.target.value;
+                          setSnippetValues(newValues);
+                        }}
+                        placeholder={`Value ${i + 1}${i < 3 ? ' *' : ''}`}
+                        maxLength={25}
+                        className={`px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm ${
+                          i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Call Asset Section */}
+            {activeAssetSection === 'call' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Add a phone number to let customers call you directly from the ad.</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Price Assets Section */}
+            {activeAssetSection === 'price' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Showcase your products/services with prices. Add at least 3 items (header: 25 chars, description: 25 chars).</p>
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {priceAssets.map((item, i) => (
+                    <div key={i} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                      <span className="text-xs font-medium text-gray-500">Price Item {i + 1}</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={item.header}
+                          onChange={(e) => {
+                            const newItems = [...priceAssets];
+                            newItems[i] = { ...newItems[i], header: e.target.value };
+                            setPriceAssets(newItems);
+                          }}
+                          placeholder="Item name"
+                          maxLength={25}
+                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => {
+                            const newItems = [...priceAssets];
+                            newItems[i] = { ...newItems[i], description: e.target.value };
+                            setPriceAssets(newItems);
+                          }}
+                          placeholder="Description"
+                          maxLength={25}
+                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={item.price}
+                          onChange={(e) => {
+                            const newItems = [...priceAssets];
+                            newItems[i] = { ...newItems[i], price: e.target.value };
+                            setPriceAssets(newItems);
+                          }}
+                          placeholder="$99.99"
+                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                        <select
+                          value={item.unit}
+                          onChange={(e) => {
+                            const newItems = [...priceAssets];
+                            newItems[i] = { ...newItems[i], unit: e.target.value };
+                            setPriceAssets(newItems);
+                          }}
+                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          {priceUnits.map((unit) => (
+                            <option key={unit} value={unit}>{unit || 'No unit'}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Promotion Asset Section */}
+            {activeAssetSection === 'promotion' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Highlight special offers with a visible price tag icon in your ad.</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Occasion</label>
+                  <select
+                    value={promotion.occasion}
+                    onChange={(e) => setPromotion({ ...promotion, occasion: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    {promotionOccasions.map((occasion) => (
+                      <option key={occasion} value={occasion}>{occasion}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+                    <select
+                      value={promotion.promotionType}
+                      onChange={(e) => setPromotion({ ...promotion, promotionType: e.target.value as 'monetary' | 'percentage' | 'none' })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="none">No discount shown</option>
+                      <option value="percentage">Percentage off</option>
+                      <option value="monetary">Money off</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+                    <input
+                      type="text"
+                      value={promotion.promotionValue}
+                      onChange={(e) => setPromotion({ ...promotion, promotionValue: e.target.value })}
+                      placeholder={promotion.promotionType === 'percentage' ? '20' : '50'}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                      disabled={promotion.promotionType === 'none'}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Item / Offer (20 chars)</label>
+                  <input
+                    type="text"
+                    value={promotion.item}
+                    onChange={(e) => setPromotion({ ...promotion, item: e.target.value })}
+                    placeholder="all orders, electronics, etc."
+                    maxLength={20}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Image Assets Section */}
+            {activeAssetSection === 'images' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Add up to 4 images. Images may appear alongside your text ad.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {searchImageUrls.map((url, i) => (
+                    <ImageUpload
+                      key={i}
+                      label={`Image ${i + 1}`}
+                      value={url}
+                      onChange={(newUrl) => {
+                        const newUrls = [...searchImageUrls];
+                        newUrls[i] = newUrl;
+                        setSearchImageUrls(newUrls);
+                      }}
+                      aspectRatio="1.91:1"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -801,8 +1122,14 @@ export default function Home() {
             path1={path1}
             path2={path2}
             businessName={businessName}
+            businessLogoUrl={businessLogoUrl}
             sitelinks={sitelinks}
             callouts={callouts}
+            structuredSnippets={{ header: snippetHeader, values: snippetValues }}
+            phoneNumber={phoneNumber}
+            priceAssets={priceAssets}
+            promotion={promotion}
+            imageUrls={searchImageUrls}
           />
         );
       case 'display':

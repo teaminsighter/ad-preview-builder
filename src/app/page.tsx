@@ -14,7 +14,7 @@ import InstagramReelsAd from '@/components/previews/InstagramReelsAd';
 import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
 import ImageUpload from '@/components/ImageUpload';
 
-type Platform = 'google' | 'meta' | 'utm';
+type Platform = 'google' | 'meta' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover';
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
 
@@ -2135,6 +2135,105 @@ export default function Home() {
     );
   };
 
+  // Ad Library Links
+  const adLibraryLinks = [
+    {
+      category: 'Meta (Facebook & Instagram)',
+      links: [
+        { name: 'Meta Ad Library', url: 'https://www.facebook.com/ads/library/', description: 'Search all active ads on Facebook, Instagram, Messenger & Audience Network' },
+        { name: 'Meta Ad Library Report', url: 'https://www.facebook.com/ads/library/report/', description: 'View spending reports for ads about social issues, elections or politics' },
+        { name: 'Meta Business Help', url: 'https://www.facebook.com/business/help', description: 'Official Meta advertising help center' },
+      ]
+    },
+    {
+      category: 'Google',
+      links: [
+        { name: 'Google Ads Transparency Center', url: 'https://adstransparency.google.com/', description: 'Search ads across Google services including Search, YouTube & Display' },
+        { name: 'Google Ads Help', url: 'https://support.google.com/google-ads', description: 'Official Google Ads support documentation' },
+        { name: 'Think with Google', url: 'https://www.thinkwithgoogle.com/', description: 'Marketing insights and trends from Google' },
+      ]
+    },
+    {
+      category: 'TikTok',
+      links: [
+        { name: 'TikTok Creative Center', url: 'https://ads.tiktok.com/business/creativecenter/pc/en', description: 'Discover top ads, trends, and creative insights on TikTok' },
+        { name: 'TikTok Ad Library', url: 'https://library.tiktok.com/', description: 'Search ads running on TikTok' },
+        { name: 'TikTok Business Help', url: 'https://ads.tiktok.com/help/', description: 'Official TikTok advertising help center' },
+      ]
+    },
+    {
+      category: 'LinkedIn',
+      links: [
+        { name: 'LinkedIn Ad Library', url: 'https://www.linkedin.com/ad-library/', description: 'Search ads running on LinkedIn' },
+        { name: 'LinkedIn Marketing Solutions', url: 'https://business.linkedin.com/marketing-solutions', description: 'LinkedIn advertising platform' },
+      ]
+    },
+    {
+      category: 'Twitter / X',
+      links: [
+        { name: 'X Ads Transparency Center', url: 'https://ads.x.com/transparency', description: 'Search ads running on X (Twitter)' },
+        { name: 'X Business', url: 'https://business.x.com/', description: 'X advertising platform' },
+      ]
+    },
+    {
+      category: 'Other Platforms',
+      links: [
+        { name: 'Snapchat Political Ads Library', url: 'https://www.snap.com/en-US/political-ads', description: 'Political and advocacy ads on Snapchat' },
+        { name: 'Pinterest Ads Manager', url: 'https://ads.pinterest.com/', description: 'Pinterest advertising platform' },
+        { name: 'Amazon Advertising', url: 'https://advertising.amazon.com/', description: 'Amazon advertising platform' },
+        { name: 'Microsoft Advertising', url: 'https://ads.microsoft.com/', description: 'Bing & Microsoft advertising' },
+      ]
+    },
+    {
+      category: 'Ad Spy & Research Tools',
+      links: [
+        { name: 'AdSpy', url: 'https://adspy.com/', description: 'Largest searchable database of Facebook & Instagram ads' },
+        { name: 'BigSpy', url: 'https://bigspy.com/', description: 'Free ad spy tool for multiple platforms' },
+        { name: 'Minea', url: 'https://minea.com/', description: 'Ad spy for e-commerce and dropshipping' },
+        { name: 'PowerAdSpy', url: 'https://poweradspy.com/', description: 'Social media ad intelligence tool' },
+        { name: 'Foreplay', url: 'https://www.foreplay.co/', description: 'Save & organize ads for creative inspiration' },
+      ]
+    },
+  ];
+
+  const renderAdLibrary = () => {
+    return (
+      <div className="space-y-6">
+        {adLibraryLinks.map((category, idx) => (
+          <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">{category.category}</h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {category.links.map((link, linkIdx) => (
+                <a
+                  key={linkIdx}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-blue-50 transition-colors group"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{link.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{link.description}</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderGooglePreview = () => {
     switch (googleAdType) {
       case 'search':
@@ -2356,12 +2455,25 @@ export default function Home() {
               </svg>
               UTM Builder
             </button>
+            <button
+              onClick={() => setPlatform('library')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                platform === 'library'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke={platform === 'library' ? '#2563EB' : '#9CA3AF'} strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Ad Library
+            </button>
           </nav>
         </div>
       </div>
 
       {/* Sub Tabs */}
-      {platform !== 'utm' && (
+      {platform !== 'utm' && platform !== 'library' && (
         <div className="bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4">
             <nav className="flex gap-1 overflow-x-auto py-2">
@@ -2401,25 +2513,39 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Editor Panel */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              {platform === 'utm' ? 'UTM Parameters' : 'Ad Content'}
-            </h2>
-            {platform === 'google' ? renderGoogleEditor() : platform === 'meta' ? renderMetaEditor() : renderUtmEditor()}
-          </div>
-
-          {/* Preview Panel */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              {platform === 'utm' ? 'Generated URL' : 'Preview'}
-            </h2>
-            <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gray-50 rounded-lg p-4 overflow-auto'}`}>
-              {platform === 'google' ? renderGooglePreview() : platform === 'meta' ? renderMetaPreview() : renderUtmPreview()}
+        {platform === 'library' ? (
+          /* Ad Library - Full Width */
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Ad Library Resources</h2>
+              <p className="text-sm text-gray-600 mt-1">Browse competitor ads and find creative inspiration across all major platforms</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderAdLibrary()}
             </div>
           </div>
-        </div>
+        ) : (
+          /* Two Column Layout for Editors */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Editor Panel */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                {platform === 'utm' ? 'UTM Parameters' : 'Ad Content'}
+              </h2>
+              {platform === 'google' ? renderGoogleEditor() : platform === 'meta' ? renderMetaEditor() : renderUtmEditor()}
+            </div>
+
+            {/* Preview Panel */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                {platform === 'utm' ? 'Generated URL' : 'Preview'}
+              </h2>
+              <div className={`${platform === 'utm' ? '' : 'flex items-center justify-center min-h-[500px] bg-gray-50 rounded-lg p-4 overflow-auto'}`}>
+                {platform === 'google' ? renderGooglePreview() : platform === 'meta' ? renderMetaPreview() : renderUtmPreview()}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer */}

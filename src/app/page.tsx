@@ -81,12 +81,31 @@ export default function Home() {
   // Image Assets (up to 4)
   const [searchImageUrls, setSearchImageUrls] = useState<string[]>(['', '', '', '']);
 
-  // Active editor section
+  // Active editor section (for non-search types)
   const [activeAssetSection, setActiveAssetSection] = useState<string>('headlines');
 
   // Visible headline/description count (start with 5 headlines, 2 descriptions)
   const [visibleHeadlines, setVisibleHeadlines] = useState(5);
   const [visibleDescriptions, setVisibleDescriptions] = useState(2);
+  const [visibleSitelinks, setVisibleSitelinks] = useState(2);
+  const [visibleCallouts, setVisibleCallouts] = useState(4);
+
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    headlines: true,
+    descriptions: true,
+    images: false,
+    sitelinks: false,
+    promotions: false,
+    prices: false,
+    calls: false,
+    callouts: false,
+    snippets: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const [imageUrl, setImageUrl] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -128,196 +147,241 @@ export default function Home() {
     switch (googleAdType) {
       case 'search':
         return (
-          <div className="space-y-4">
-            {/* Asset Section Tabs */}
-            <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-2">
-              {[
-                { id: 'headlines', label: 'Headlines & Descriptions' },
-                { id: 'urls', label: 'URLs & Business' },
-                { id: 'sitelinks', label: 'Sitelinks' },
-                { id: 'callouts', label: 'Callouts' },
-                { id: 'snippets', label: 'Structured Snippets' },
-                { id: 'call', label: 'Call' },
-                { id: 'price', label: 'Price' },
-                { id: 'promotion', label: 'Promotion' },
-                { id: 'images', label: 'Images' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveAssetSection(tab.id)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                    activeAssetSection === tab.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          <div className="space-y-0 divide-y divide-gray-200">
+            {/* Final URL Section */}
+            <div className="pb-4">
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+                Final URL
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="url"
+                value={finalUrl}
+                onChange={(e) => setFinalUrl(e.target.value)}
+                placeholder="https://example.com/landing-page"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Display path</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{displayUrl || 'example.com'} /</span>
+                  <input
+                    type="text"
+                    value={path1}
+                    onChange={(e) => setPath1(e.target.value)}
+                    placeholder="path1"
+                    maxLength={15}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="text-gray-400">/</span>
+                  <input
+                    type="text"
+                    value={path2}
+                    onChange={(e) => setPath2(e.target.value)}
+                    placeholder="path2"
+                    maxLength={15}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Headlines & Descriptions Section */}
-            {activeAssetSection === 'headlines' && (
-              <div className="space-y-6">
-                {/* Headlines */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-gray-700">Headlines (30 chars max)</label>
-                    <span className="text-xs text-gray-500">{headlines.filter(h => h.trim()).length}/15 added</span>
-                  </div>
-                  <div className="space-y-3">
-                    {headlines.slice(0, visibleHeadlines).map((h, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <span className="text-sm text-gray-400 w-5">{i + 1}</span>
-                        <input
-                          type="text"
-                          value={h}
-                          onChange={(e) => {
-                            const newHeadlines = [...headlines];
-                            newHeadlines[i] = e.target.value;
-                            setHeadlines(newHeadlines);
-                          }}
-                          placeholder={`Headline ${i + 1}${i < 3 ? ' *' : ''}`}
-                          maxLength={30}
-                          className={`flex-1 px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
-                            i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
-                          }`}
-                        />
-                        <span className="text-xs text-gray-400 w-10 text-right">{h.length}/30</span>
-                      </div>
-                    ))}
-                  </div>
+            {/* Headlines Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('headlines')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.headlines ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Headlines (30 chars max)</span>
+                </div>
+                <span className="text-xs text-gray-500">{headlines.filter(h => h.trim()).length}/15 added</span>
+              </button>
+              {expandedSections.headlines && (
+                <div className="mt-4 space-y-3 pl-7">
+                  {headlines.slice(0, visibleHeadlines).map((h, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-400 w-5">{i + 1}</span>
+                      <input
+                        type="text"
+                        value={h}
+                        onChange={(e) => {
+                          const newHeadlines = [...headlines];
+                          newHeadlines[i] = e.target.value;
+                          setHeadlines(newHeadlines);
+                        }}
+                        placeholder={`Headline ${i + 1}${i < 3 ? ' *' : ''}`}
+                        maxLength={30}
+                        className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                          i < 3 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                        }`}
+                      />
+                      <span className="text-xs text-gray-400 w-10 text-right">{h.length}/30</span>
+                    </div>
+                  ))}
                   {visibleHeadlines < 15 && (
                     <button
                       onClick={() => setVisibleHeadlines(Math.min(visibleHeadlines + 5, 15))}
-                      className="mt-3 flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium mt-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Add more headlines ({15 - visibleHeadlines} remaining)
+                      Add more headlines
                     </button>
                   )}
                 </div>
+              )}
+            </div>
 
-                {/* Descriptions */}
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-gray-700">Descriptions (90 chars max)</label>
-                    <span className="text-xs text-gray-500">{descriptions.filter(d => d.trim()).length}/4 added</span>
-                  </div>
-                  <div className="space-y-3">
-                    {descriptions.slice(0, visibleDescriptions).map((d, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <span className="text-sm text-gray-400 w-5 pt-2.5">{i + 1}</span>
-                        <textarea
-                          value={d}
-                          onChange={(e) => {
-                            const newDescriptions = [...descriptions];
-                            newDescriptions[i] = e.target.value;
-                            setDescriptions(newDescriptions);
-                          }}
-                          placeholder={`Description ${i + 1}${i < 2 ? ' *' : ''}`}
-                          maxLength={90}
-                          rows={2}
-                          className={`flex-1 px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none ${
-                            i < 2 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
-                          }`}
-                        />
-                        <span className="text-xs text-gray-400 w-10 text-right pt-2.5">{d.length}/90</span>
-                      </div>
-                    ))}
-                  </div>
+            {/* Descriptions Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('descriptions')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.descriptions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Descriptions (90 chars max)</span>
+                </div>
+                <span className="text-xs text-gray-500">{descriptions.filter(d => d.trim()).length}/4 added</span>
+              </button>
+              {expandedSections.descriptions && (
+                <div className="mt-4 space-y-3 pl-7">
+                  {descriptions.slice(0, visibleDescriptions).map((d, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-sm text-gray-400 w-5 pt-2.5">{i + 1}</span>
+                      <textarea
+                        value={d}
+                        onChange={(e) => {
+                          const newDescriptions = [...descriptions];
+                          newDescriptions[i] = e.target.value;
+                          setDescriptions(newDescriptions);
+                        }}
+                        placeholder={`Description ${i + 1}${i < 2 ? ' *' : ''}`}
+                        maxLength={90}
+                        rows={2}
+                        className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                          i < 2 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                        }`}
+                      />
+                      <span className="text-xs text-gray-400 w-10 text-right pt-2.5">{d.length}/90</span>
+                    </div>
+                  ))}
                   {visibleDescriptions < 4 && (
                     <button
                       onClick={() => setVisibleDescriptions(Math.min(visibleDescriptions + 2, 4))}
-                      className="mt-3 flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium mt-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Add more descriptions ({4 - visibleDescriptions} remaining)
+                      Add more descriptions
                     </button>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* URLs & Business Section */}
-            {activeAssetSection === 'urls' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Final URL *</label>
-                  <input
-                    type="url"
-                    value={finalUrl}
-                    onChange={(e) => setFinalUrl(e.target.value)}
-                    placeholder="https://example.com/landing-page"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+            {/* Images Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('images')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.images ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Images</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Display URL</label>
-                    <input
-                      type="text"
-                      value={displayUrl}
-                      onChange={(e) => setDisplayUrl(e.target.value)}
-                      placeholder="example.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Path 1 (15)</label>
-                    <input
-                      type="text"
-                      value={path1}
-                      onChange={(e) => setPath1(e.target.value)}
-                      placeholder="products"
-                      maxLength={15}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Path 2 (15)</label>
-                    <input
-                      type="text"
-                      value={path2}
-                      onChange={(e) => setPath2(e.target.value)}
-                      placeholder="sale"
-                      maxLength={15}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
+                <span className="text-xs text-gray-500">{searchImageUrls.filter(u => u).length}/4 added</span>
+              </button>
+              {expandedSections.images && (
+                <div className="mt-4 pl-7">
+                  <p className="text-xs text-gray-500 mb-3">Add images to your campaign</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {searchImageUrls.map((url, i) => (
+                      <div key={i} className="aspect-square">
+                        <ImageUpload
+                          label=""
+                          value={url}
+                          onChange={(newUrl) => {
+                            const newUrls = [...searchImageUrls];
+                            newUrls[i] = newUrl;
+                            setSearchImageUrls(newUrls);
+                          }}
+                          aspectRatio="1:1"
+                          className="h-full"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name (25 chars)</label>
-                  <input
-                    type="text"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="Your Business Name"
-                    maxLength={25}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+              )}
+            </div>
+
+            {/* Business Name */}
+            <div className="py-4">
+              <label className="block text-sm font-medium text-gray-900 mb-2">Business name</label>
+              <input
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Your Business Name"
+                maxLength={25}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            {/* Business Logo */}
+            <div className="py-4">
+              <label className="block text-sm font-medium text-gray-900 mb-2">Business logo</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden">
+                  {businessLogoUrl ? (
+                    <img src={businessLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
                 </div>
                 <ImageUpload
-                  label="Business Logo (1:1)"
+                  label=""
                   value={businessLogoUrl}
                   onChange={setBusinessLogoUrl}
                   aspectRatio="1:1"
+                  className="flex-1"
                 />
               </div>
-            )}
+            </div>
 
             {/* Sitelinks Section */}
-            {activeAssetSection === 'sitelinks' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Add 2-8 sitelinks. Each needs a title (25 chars) and optional descriptions (35 chars each).</p>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                  {sitelinks.map((link, i) => (
-                    <div key={i} className="bg-gray-50 p-3 rounded-lg space-y-2">
-                      <div className="flex items-center gap-2">
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('sitelinks')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.sitelinks ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Sitelinks</span>
+                </div>
+                <span className="text-xs text-gray-500">{sitelinks.filter(s => s.title.trim()).length}/8 added</span>
+              </button>
+              {expandedSections.sitelinks && (
+                <div className="mt-4 pl-7 space-y-3">
+                  <p className="text-xs text-gray-500">Add links to your ads to take people to specific pages on your website.</p>
+                  {sitelinks.slice(0, visibleSitelinks).map((link, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-500">Sitelink {i + 1}</span>
                         <span className="text-xs text-gray-400">{link.title.length}/25</span>
                       </div>
@@ -329,9 +393,9 @@ export default function Home() {
                           newSitelinks[i] = { ...newSitelinks[i], title: e.target.value };
                           setSitelinks(newSitelinks);
                         }}
-                        placeholder="Link text (e.g., Free Shipping)"
+                        placeholder="Sitelink text"
                         maxLength={25}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <input
@@ -344,7 +408,7 @@ export default function Home() {
                           }}
                           placeholder="Description line 1"
                           maxLength={35}
-                          className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         />
                         <input
                           type="text"
@@ -356,118 +420,111 @@ export default function Home() {
                           }}
                           placeholder="Description line 2"
                           maxLength={35}
-                          className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         />
                       </div>
-                      <input
-                        type="url"
-                        value={link.url}
-                        onChange={(e) => {
-                          const newSitelinks = [...sitelinks];
-                          newSitelinks[i] = { ...newSitelinks[i], url: e.target.value };
-                          setSitelinks(newSitelinks);
-                        }}
-                        placeholder="Final URL for this sitelink"
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                      />
                     </div>
                   ))}
+                  {visibleSitelinks < 8 && (
+                    <button
+                      onClick={() => setVisibleSitelinks(Math.min(visibleSitelinks + 2, 8))}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add more sitelinks
+                    </button>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Callouts Section */}
-            {activeAssetSection === 'callouts' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Add up to 10 callouts (25 chars each). Highlight benefits like &quot;Free Shipping&quot; or &quot;24/7 Support&quot;.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {callouts.map((callout, i) => (
-                    <div key={i} className="relative">
-                      <input
-                        type="text"
-                        value={callout}
-                        onChange={(e) => {
-                          const newCallouts = [...callouts];
-                          newCallouts[i] = e.target.value;
-                          setCallouts(newCallouts);
-                        }}
-                        placeholder={`Callout ${i + 1}`}
-                        maxLength={25}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{callout.length}/25</span>
-                    </div>
-                  ))}
+            {/* Promotions Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('promotions')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.promotions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Promotions</span>
                 </div>
-              </div>
-            )}
-
-            {/* Structured Snippets Section */}
-            {activeAssetSection === 'snippets' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Show specific aspects of your products/services. Select a header and add 3-10 values (25 chars each).</p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Header</label>
-                  <select
-                    value={snippetHeader}
-                    onChange={(e) => setSnippetHeader(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    {snippetHeaders.map((header) => (
-                      <option key={header} value={header}>{header}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Values</label>
+              </button>
+              {expandedSections.promotions && (
+                <div className="mt-4 pl-7 space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Occasion</label>
+                    <select
+                      value={promotion.occasion}
+                      onChange={(e) => setPromotion({ ...promotion, occasion: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      {promotionOccasions.map((occasion) => (
+                        <option key={occasion} value={occasion}>{occasion}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {snippetValues.map((value, i) => (
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Discount type</label>
+                      <select
+                        value={promotion.promotionType}
+                        onChange={(e) => setPromotion({ ...promotion, promotionType: e.target.value as 'monetary' | 'percentage' | 'none' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="none">None</option>
+                        <option value="percentage">Percent off</option>
+                        <option value="monetary">Money off</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">Value</label>
                       <input
-                        key={i}
                         type="text"
-                        value={value}
-                        onChange={(e) => {
-                          const newValues = [...snippetValues];
-                          newValues[i] = e.target.value;
-                          setSnippetValues(newValues);
-                        }}
-                        placeholder={`Value ${i + 1}${i < 3 ? ' *' : ''}`}
-                        maxLength={25}
-                        className={`px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm ${
-                          i < 3 ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300'
-                        }`}
+                        value={promotion.promotionValue}
+                        onChange={(e) => setPromotion({ ...promotion, promotionValue: e.target.value })}
+                        placeholder={promotion.promotionType === 'percentage' ? '20' : '50'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        disabled={promotion.promotionType === 'none'}
                       />
-                    ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Item (20 chars)</label>
+                    <input
+                      type="text"
+                      value={promotion.item}
+                      onChange={(e) => setPromotion({ ...promotion, item: e.target.value })}
+                      placeholder="all orders"
+                      maxLength={20}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Call Asset Section */}
-            {activeAssetSection === 'call' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Add a phone number to let customers call you directly from the ad.</p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+1 (555) 123-4567"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+            {/* Prices Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('prices')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.prices ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Prices</span>
                 </div>
-              </div>
-            )}
-
-            {/* Price Assets Section */}
-            {activeAssetSection === 'price' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Showcase your products/services with prices. Add at least 3 items (header: 25 chars, description: 25 chars).</p>
-                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                  {priceAssets.map((item, i) => (
-                    <div key={i} className="bg-gray-50 p-3 rounded-lg space-y-2">
-                      <span className="text-xs font-medium text-gray-500">Price Item {i + 1}</span>
+              </button>
+              {expandedSections.prices && (
+                <div className="mt-4 pl-7 space-y-3">
+                  {priceAssets.slice(0, 3).map((item, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                      <span className="text-xs font-medium text-gray-500">Price {i + 1}</span>
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="text"
@@ -479,22 +536,8 @@ export default function Home() {
                           }}
                           placeholder="Item name"
                           maxLength={25}
-                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         />
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => {
-                            const newItems = [...priceAssets];
-                            newItems[i] = { ...newItems[i], description: e.target.value };
-                            setPriceAssets(newItems);
-                          }}
-                          placeholder="Description"
-                          maxLength={25}
-                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
                         <input
                           type="text"
                           value={item.price}
@@ -504,104 +547,137 @@ export default function Home() {
                             setPriceAssets(newItems);
                           }}
                           placeholder="$99.99"
-                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                         />
-                        <select
-                          value={item.unit}
-                          onChange={(e) => {
-                            const newItems = [...priceAssets];
-                            newItems[i] = { ...newItems[i], unit: e.target.value };
-                            setPriceAssets(newItems);
-                          }}
-                          className="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                        >
-                          {priceUnits.map((unit) => (
-                            <option key={unit} value={unit}>{unit || 'No unit'}</option>
-                          ))}
-                        </select>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Promotion Asset Section */}
-            {activeAssetSection === 'promotion' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Highlight special offers with a visible price tag icon in your ad.</p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Occasion</label>
-                  <select
-                    value={promotion.occasion}
-                    onChange={(e) => setPromotion({ ...promotion, occasion: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                  >
-                    {promotionOccasions.map((occasion) => (
-                      <option key={occasion} value={occasion}>{occasion}</option>
-                    ))}
-                  </select>
+            {/* Calls Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('calls')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.calls ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Calls</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
-                    <select
-                      value={promotion.promotionType}
-                      onChange={(e) => setPromotion({ ...promotion, promotionType: e.target.value as 'monetary' | 'percentage' | 'none' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                    >
-                      <option value="none">No discount shown</option>
-                      <option value="percentage">Percentage off</option>
-                      <option value="monetary">Money off</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
-                    <input
-                      type="text"
-                      value={promotion.promotionValue}
-                      onChange={(e) => setPromotion({ ...promotion, promotionValue: e.target.value })}
-                      placeholder={promotion.promotionType === 'percentage' ? '20' : '50'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
-                      disabled={promotion.promotionType === 'none'}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Item / Offer (20 chars)</label>
+              </button>
+              {expandedSections.calls && (
+                <div className="mt-4 pl-7">
                   <input
-                    type="text"
-                    value={promotion.item}
-                    onChange={(e) => setPromotion({ ...promotion, item: e.target.value })}
-                    placeholder="all orders, electronics, etc."
-                    maxLength={20}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Image Assets Section */}
-            {activeAssetSection === 'images' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">Add up to 4 images. Images may appear alongside your text ad.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {searchImageUrls.map((url, i) => (
-                    <ImageUpload
-                      key={i}
-                      label={`Image ${i + 1}`}
-                      value={url}
-                      onChange={(newUrl) => {
-                        const newUrls = [...searchImageUrls];
-                        newUrls[i] = newUrl;
-                        setSearchImageUrls(newUrls);
-                      }}
-                      aspectRatio="1.91:1"
-                    />
-                  ))}
+            {/* Callouts Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('callouts')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.callouts ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Callouts</span>
                 </div>
-              </div>
-            )}
+                <span className="text-xs text-gray-500">{callouts.filter(c => c.trim()).length}/10 added</span>
+              </button>
+              {expandedSections.callouts && (
+                <div className="mt-4 pl-7 space-y-2">
+                  <p className="text-xs text-gray-500 mb-2">Add more business information</p>
+                  {callouts.slice(0, visibleCallouts).map((callout, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={callout}
+                        onChange={(e) => {
+                          const newCallouts = [...callouts];
+                          newCallouts[i] = e.target.value;
+                          setCallouts(newCallouts);
+                        }}
+                        placeholder={`Callout ${i + 1}`}
+                        maxLength={25}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                      <span className="text-xs text-gray-400 w-10 text-right">{callout.length}/25</span>
+                    </div>
+                  ))}
+                  {visibleCallouts < 10 && (
+                    <button
+                      onClick={() => setVisibleCallouts(Math.min(visibleCallouts + 4, 10))}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add more callouts
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Structured Snippets Section */}
+            <div className="py-4">
+              <button
+                onClick={() => toggleSection('snippets')}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className={`w-5 h-5 text-gray-400 transition-transform ${expandedSections.snippets ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">Structured snippets</span>
+                </div>
+              </button>
+              {expandedSections.snippets && (
+                <div className="mt-4 pl-7 space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Header</label>
+                    <select
+                      value={snippetHeader}
+                      onChange={(e) => setSnippetHeader(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      {snippetHeaders.map((header) => (
+                        <option key={header} value={header}>{header}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    {snippetValues.slice(0, 4).map((value, i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        value={value}
+                        onChange={(e) => {
+                          const newValues = [...snippetValues];
+                          newValues[i] = e.target.value;
+                          setSnippetValues(newValues);
+                        }}
+                        placeholder={`Value ${i + 1}`}
+                        maxLength={25}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
 

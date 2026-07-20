@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import GmailAd from '@/components/previews/GmailAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
-import { GField, PhoneFrame, ReadyItem } from './ui';
+import { GField, PhoneFrame, ReadyItem, DownloadPreviewButton } from './ui';
 import { DEMO_LANDSCAPE_IMG, DEMO_SQUARE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'display' | 'gmail' | 'youtube';
@@ -30,6 +30,7 @@ export default function DisplayCampaign() {
   const [placement, setPlacement] = useState<Placement>('display');
   const [displaySize, setDisplaySize] = useState<DisplaySize>('medium-rectangle');
   const [loaded, setLoaded] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -319,9 +320,9 @@ export default function DisplayCampaign() {
           <div className="p-5 bg-gray-50/50">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-medium text-gray-900">Preview</h3>
-              <div className="flex gap-3 text-sm font-medium text-blue-600">
+              <div className="flex items-center gap-3 text-sm font-medium text-blue-600">
                 <button type="button" className="hover:underline">Share</button>
-                <button type="button" className="hover:underline">Preview ads</button>
+                <DownloadPreviewButton targetRef={previewRef} filename={`display-${placement}`} />
               </div>
             </div>
 
@@ -358,7 +359,9 @@ export default function DisplayCampaign() {
               </select>
             )}
 
-            <PhoneFrame contentWidth={previewWidth}>{renderPlacementPreview()}</PhoneFrame>
+            <div ref={previewRef}>
+              <PhoneFrame contentWidth={previewWidth}>{renderPlacementPreview()}</PhoneFrame>
+            </div>
 
             <p className="text-xs text-gray-500 text-center mt-5 px-2">
               Previews shown here are examples and don&apos;t include all possible formats. You&apos;re responsible for the

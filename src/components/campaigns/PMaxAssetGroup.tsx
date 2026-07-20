@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import GoogleSearchAd from '@/components/previews/GoogleSearchAd';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import GmailAd from '@/components/previews/GmailAd';
 import DiscoverAd from '@/components/previews/DiscoverAd';
-import { SectionCard, GField, AdStrength, PhoneFrame, PlacementTabs } from './ui';
+import { SectionCard, GField, AdStrength, PhoneFrame, PlacementTabs, DownloadPreviewButton } from './ui';
 import { DEMO_LANDSCAPE_IMG, DEMO_SQUARE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'search' | 'display' | 'youtube' | 'gmail' | 'discover';
@@ -46,6 +46,7 @@ export default function PMaxAssetGroup() {
   const [audienceName, setAudienceName] = useState('Audio enthusiasts - In-market shoppers');
   const [placement, setPlacement] = useState<Placement>('search');
   const [loaded, setLoaded] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   // Load persisted asset group
   useEffect(() => {
@@ -317,12 +318,14 @@ export default function PMaxAssetGroup() {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-medium text-gray-900">Preview</h3>
-            <span className="text-xs text-gray-500">Ads generated from your assets</span>
+            <DownloadPreviewButton targetRef={previewRef} filename={`pmax-${placement}`} />
           </div>
           <PlacementTabs tabs={placementTabs} active={placement} onSelect={setPlacement} />
-          <PhoneFrame contentWidth={{ search: 302, display: 302, youtube: 480, gmail: 600, discover: 360 }[placement]}>
-            {renderPlacementPreview()}
-          </PhoneFrame>
+          <div ref={previewRef}>
+            <PhoneFrame contentWidth={{ search: 302, display: 302, youtube: 480, gmail: 600, discover: 360 }[placement]}>
+              {renderPlacementPreview()}
+            </PhoneFrame>
+          </div>
         </div>
       </div>
     </div>

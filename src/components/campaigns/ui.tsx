@@ -2,6 +2,78 @@
 
 import { useState } from 'react';
 
+// Render a DOM node to a PNG data URL. Uses html-to-image's toSvg (which handles
+// Tailwind v4's oklch colors) plus manual canvas rasterization — toPng's internal
+// img.decode() hangs on large SVG data URLs in Chrome, so we rasterize ourselves.
+export async function nodeToPngDataUrl(
+  node: HTMLElement,
+  { pixelRatio = 2, backgroundColor }: { pixelRatio?: number; backgroundColor?: string } = {}
+): Promise<string> {
+  const { toSvg } = await import('html-to-image');
+  const svgUrl = await toSvg(node);
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Failed to rasterize preview'));
+    img.src = svgUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth * pixelRatio;
+  canvas.height = img.naturalHeight * pixelRatio;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas not supported');
+  if (backgroundColor) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+// Download a preview node as a PNG
+export function DownloadPreviewButton({
+  targetRef,
+  filename,
+}: {
+  targetRef: React.RefObject<HTMLDivElement | null>;
+  filename: string;
+}) {
+  const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const handleDownload = async () => {
+    if (!targetRef.current || state === 'busy') return;
+    setState('busy');
+    try {
+      const dataUrl = await nodeToPngDataUrl(targetRef.current);
+      const link = document.createElement('a');
+      link.download = `${filename}-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      setState('idle');
+    } catch (error) {
+      console.error('Preview export failed:', error);
+      setState('failed');
+      setTimeout(() => setState('idle'), 2500);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={state === 'busy'}
+      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-white border rounded-lg disabled:opacity-50 transition-colors ${
+        state === 'failed' ? 'text-red-600 border-red-300' : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+      }`}
+      title="Download preview as PNG"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      {state === 'busy' ? 'Saving…' : state === 'failed' ? 'Failed' : 'PNG'}
+    </button>
+  );
+}
+
 // Google Ads-style white section card with a title row and optional collapse
 export function SectionCard({
   title,

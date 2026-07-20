@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import YouTubeShortsAd from '@/components/previews/YouTubeShortsAd';
-import { SectionCard, SummaryRow, GField, GToggle, PhoneFrame, PlacementTabs, ReadyItem, AdStrength } from './ui';
+import { SectionCard, SummaryRow, GField, GToggle, PhoneFrame, PlacementTabs, ReadyItem, AdStrength, DownloadPreviewButton } from './ui';
 import { DEMO_LANDSCAPE_IMG } from './demo';
 
 type Placement = 'instream' | 'shorts';
@@ -34,6 +34,7 @@ export default function VideoCampaign() {
 
   const [placement, setPlacement] = useState<Placement>('instream');
   const [loaded, setLoaded] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -196,15 +197,20 @@ export default function VideoCampaign() {
       {/* ==== Right: sticky preview + readiness ==== */}
       <div className="xl:sticky xl:top-24 space-y-4">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 className="text-base font-medium text-gray-900 mb-3">Preview</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-medium text-gray-900">Preview</h3>
+            <DownloadPreviewButton targetRef={previewRef} filename={`video-${placement}`} />
+          </div>
           <PlacementTabs tabs={placementTabs} active={placement} onSelect={setPlacement} />
-          <PhoneFrame contentWidth={placement === 'instream' ? 480 : 302}>
-            {placement === 'instream' ? (
-              <YouTubeInStreamAd headline={headline} description={description} displayUrl={displayUrl} ctaText={ctaText} thumbnailUrl={thumbnailUrl} />
-            ) : (
-              <YouTubeShortsAd username={channelName || 'yourbrand'} description={description} ctaText={ctaText} imageUrl={thumbnailUrl} />
-            )}
-          </PhoneFrame>
+          <div ref={previewRef}>
+            <PhoneFrame contentWidth={placement === 'instream' ? 480 : 302}>
+              {placement === 'instream' ? (
+                <YouTubeInStreamAd headline={headline} description={description} displayUrl={displayUrl} ctaText={ctaText} thumbnailUrl={thumbnailUrl} />
+              ) : (
+                <YouTubeShortsAd username={channelName || 'yourbrand'} description={description} ctaText={ctaText} imageUrl={thumbnailUrl} />
+              )}
+            </PhoneFrame>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">

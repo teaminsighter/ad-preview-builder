@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import GoogleShoppingAd from '@/components/previews/GoogleShoppingAd';
-import { SectionCard, SummaryRow, GField, InfoBanner, PhoneFrame, ReadyItem, AdStrength } from './ui';
+import { SectionCard, SummaryRow, GField, InfoBanner, PhoneFrame, ReadyItem, AdStrength, DownloadPreviewButton } from './ui';
 
 const STORAGE_KEY = 'shoppingCampaignData';
 
@@ -35,6 +35,7 @@ export default function ShoppingCampaign({
   const [budgetType, setBudgetType] = useState<'daily' | 'total'>('daily');
   const [budget, setBudget] = useState('50');
   const [loaded, setLoaded] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -172,7 +173,11 @@ export default function ShoppingCampaign({
       {/* ==== Right: sticky preview + readiness ==== */}
       <div className="xl:sticky xl:top-24 space-y-4">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 className="text-base font-medium text-gray-900 mb-3">Preview</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-medium text-gray-900">Preview</h3>
+            <DownloadPreviewButton targetRef={previewRef} filename="shopping" />
+          </div>
+          <div ref={previewRef}>
           <PhoneFrame contentWidth={380}>
             <GoogleShoppingAd
               productTitle={productTitle}
@@ -184,6 +189,7 @@ export default function ShoppingCampaign({
               shipping={productShipping}
             />
           </PhoneFrame>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">

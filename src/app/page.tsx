@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import GoogleSearchAd from '@/components/previews/GoogleSearchAd';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
@@ -15,6 +14,7 @@ import DemandGenCampaign from '@/components/campaigns/DemandGenCampaign';
 import VideoCampaign from '@/components/campaigns/VideoCampaign';
 import DisplayCampaign from '@/components/campaigns/DisplayCampaign';
 import { DEMO_PRODUCT_IMG } from '@/components/campaigns/demo';
+import { nodeToPngDataUrl } from '@/components/campaigns/ui';
 import ShoppingCampaign from '@/components/campaigns/ShoppingCampaign';
 import MetaFeedAd from '@/components/previews/MetaFeedAd';
 import InstagramFeedAd from '@/components/previews/InstagramFeedAd';
@@ -408,15 +408,11 @@ export default function Home() {
     if (!previewRef.current) return;
 
     try {
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-      });
+      const dataUrl = await nodeToPngDataUrl(previewRef.current, { backgroundColor: '#ffffff' });
 
       const link = document.createElement('a');
       link.download = `ad-preview-${platform}-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.click();
     } catch (error) {
       console.error('Error exporting image:', error);
@@ -429,20 +425,22 @@ export default function Home() {
     if (!previewRef.current) return;
 
     try {
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
+      const dataUrl = await nodeToPngDataUrl(previewRef.current, { backgroundColor: '#ffffff' });
+
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = dataUrl;
       });
 
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        orientation: img.width > img.height ? 'landscape' : 'portrait',
         unit: 'px',
-        format: [canvas.width, canvas.height],
+        format: [img.width, img.height],
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
       pdf.save(`ad-preview-${platform}-${Date.now()}.pdf`);
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -710,6 +708,14 @@ export default function Home() {
       window.open('https://docs.google.com/spreadsheets/create', '_blank');
       alert(`${sheetName} data copied! In Google Sheets, press Ctrl+V (Cmd+V on Mac) to paste.`);
     }
+  };
+
+  // Clear all saved data and return to the demo defaults
+  const resetAllData = () => {
+    if (!confirm('Reset everything back to the demo defaults? This clears all data you have entered.')) return;
+    ['adPreviewData', 'pmaxAssetGroupData', 'demandGenCampaignData', 'videoCampaignData', 'displayCampaignData', 'shoppingCampaignData']
+      .forEach(key => localStorage.removeItem(key));
+    window.location.reload();
   };
 
   // localStorage stores used by the campaign builder components
@@ -3115,6 +3121,17 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+              {/* Reset to demo defaults */}
+              <button
+                onClick={resetAllData}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 card-hover"
+                title="Clear all data and restore the demo defaults"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset
+              </button>
               {/* Dark Mode Toggle */}
               <button
                 onClick={() => setDarkMode(!darkMode)}

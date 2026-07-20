@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import DiscoverAd from '@/components/previews/DiscoverAd';
 import GmailAd from '@/components/previews/GmailAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import YouTubeShortsAd from '@/components/previews/YouTubeShortsAd';
-import { SectionCard, SummaryRow, GField, GToggle, InfoBanner, PhoneFrame, PlacementTabs, ReadyItem, AdStrength } from './ui';
+import { SectionCard, SummaryRow, GField, GToggle, InfoBanner, PhoneFrame, PlacementTabs, ReadyItem, AdStrength, DownloadPreviewButton } from './ui';
 import { DEMO_LANDSCAPE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'discover' | 'gmail' | 'youtube' | 'shorts';
@@ -49,6 +49,7 @@ export default function DemandGenCampaign() {
 
   const [placement, setPlacement] = useState<Placement>('discover');
   const [loaded, setLoaded] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -342,11 +343,16 @@ export default function DemandGenCampaign() {
 
         {/* Preview */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 className="text-base font-medium text-gray-900 mb-3">Preview</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-medium text-gray-900">Preview</h3>
+            <DownloadPreviewButton targetRef={previewRef} filename={`demand-gen-${placement}`} />
+          </div>
           <PlacementTabs tabs={placementTabs} active={placement} onSelect={setPlacement} />
-          <PhoneFrame contentWidth={{ discover: 360, gmail: 600, youtube: 480, shorts: 302 }[placement]}>
-            {renderPlacementPreview()}
-          </PhoneFrame>
+          <div ref={previewRef}>
+            <PhoneFrame contentWidth={{ discover: 360, gmail: 600, youtube: 480, shorts: 302 }[placement]}>
+              {renderPlacementPreview()}
+            </PhoneFrame>
+          </div>
         </div>
       </div>
 

@@ -6,7 +6,6 @@ import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import GmailAd from '@/components/previews/GmailAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import { GField, PhoneFrame, ReadyItem, DownloadPreviewButton } from './ui';
-import { DEMO_LANDSCAPE_IMG, DEMO_SQUARE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'display' | 'gmail' | 'youtube';
 type DisplaySize = 'medium-rectangle' | 'leaderboard' | 'large-rectangle';
@@ -14,18 +13,18 @@ type DisplaySize = 'medium-rectangle' | 'leaderboard' | 'large-rectangle';
 const STORAGE_KEY = 'displayCampaignData';
 
 export default function DisplayCampaign() {
-  const [finalUrl, setFinalUrl] = useState('https://www.demostore.com');
-  const [businessName, setBusinessName] = useState('Demo Store');
-  const [landscapeImageUrl, setLandscapeImageUrl] = useState(DEMO_LANDSCAPE_IMG);
-  const [squareImageUrl, setSquareImageUrl] = useState(DEMO_SQUARE_IMG);
-  const [logoUrl, setLogoUrl] = useState(DEMO_LOGO_IMG);
+  const [finalUrl, setFinalUrl] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [landscapeImageUrl, setLandscapeImageUrl] = useState('');
+  const [squareImageUrl, setSquareImageUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
-  const [headlines, setHeadlines] = useState<string[]>(['Premium Wireless Headphones', ...Array(4).fill('')]);
+  const [headlines, setHeadlines] = useState<string[]>(Array(5).fill(''));
   const [visibleHeadlines, setVisibleHeadlines] = useState(1);
-  const [longHeadline, setLongHeadline] = useState('Experience Studio-Quality Sound with Demo Store Wireless Headphones');
-  const [descriptions, setDescriptions] = useState<string[]>(['Noise-cancelling headphones with 40-hour battery life.', ...Array(4).fill('')]);
+  const [longHeadline, setLongHeadline] = useState('');
+  const [descriptions, setDescriptions] = useState<string[]>(Array(5).fill(''));
   const [visibleDescriptions, setVisibleDescriptions] = useState(1);
-  const [ctaText, setCtaText] = useState('Shop now');
+  const [ctaText, setCtaText] = useState('Learn more');
   const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
   const [placement, setPlacement] = useState<Placement>('display');
   const [displaySize, setDisplaySize] = useState<DisplaySize>('medium-rectangle');

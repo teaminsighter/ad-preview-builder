@@ -27,13 +27,13 @@ export default function ShoppingCampaign({
   productShipping, setProductShipping,
 }: ShoppingCampaignProps) {
   const [campaignName, setCampaignName] = useState('Shopping Campaign');
-  const [merchantAccount, setMerchantAccount] = useState('Demo Store (123-456-7890)');
+  const [merchantAccount, setMerchantAccount] = useState('');
   const [feedCountry, setFeedCountry] = useState('United States');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('low');
   const [networkSearch, setNetworkSearch] = useState(true);
   const [networkPartners, setNetworkPartners] = useState(false);
   const [budgetType, setBudgetType] = useState<'daily' | 'total'>('daily');
-  const [budget, setBudget] = useState('50');
+  const [budget, setBudget] = useState('');
   const [loaded, setLoaded] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 

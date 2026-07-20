@@ -5,7 +5,6 @@ import ImageUpload from '@/components/ImageUpload';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import YouTubeShortsAd from '@/components/previews/YouTubeShortsAd';
 import { SectionCard, SummaryRow, GField, GToggle, PhoneFrame, PlacementTabs, ReadyItem, AdStrength, DownloadPreviewButton } from './ui';
-import { DEMO_LANDSCAPE_IMG } from './demo';
 
 type Placement = 'instream' | 'shorts';
 
@@ -15,7 +14,7 @@ export default function VideoCampaign() {
   const [campaignName, setCampaignName] = useState('Video Campaign');
   const [bidding, setBidding] = useState('Target CPV');
   const [budgetType, setBudgetType] = useState<'daily' | 'total'>('daily');
-  const [budget, setBudget] = useState('50');
+  const [budget, setBudget] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [networkSearch, setNetworkSearch] = useState(true);
@@ -23,14 +22,14 @@ export default function VideoCampaign() {
   const [networkPartners, setNetworkPartners] = useState(false);
   const [multiFormat, setMultiFormat] = useState(true);
 
-  // Ad creative — starts with demo data
-  const [videoUrl, setVideoUrl] = useState('https://youtube.com/watch?v=demo-store-ad');
-  const [channelName, setChannelName] = useState('Demo Store');
-  const [headline, setHeadline] = useState('Experience Studio-Quality Sound');
-  const [description, setDescription] = useState('Premium wireless headphones with 40-hour battery life.');
-  const [displayUrl, setDisplayUrl] = useState('demostore.com');
-  const [ctaText, setCtaText] = useState('Shop now');
-  const [thumbnailUrl, setThumbnailUrl] = useState(DEMO_LANDSCAPE_IMG);
+  // Ad creative
+  const [videoUrl, setVideoUrl] = useState('');
+  const [channelName, setChannelName] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [description, setDescription] = useState('');
+  const [displayUrl, setDisplayUrl] = useState('');
+  const [ctaText, setCtaText] = useState('Learn more');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
 
   const [placement, setPlacement] = useState<Placement>('instream');
   const [loaded, setLoaded] = useState(false);

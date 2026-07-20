@@ -13,7 +13,6 @@ import PMaxAssetGroup from '@/components/campaigns/PMaxAssetGroup';
 import DemandGenCampaign from '@/components/campaigns/DemandGenCampaign';
 import VideoCampaign from '@/components/campaigns/VideoCampaign';
 import DisplayCampaign from '@/components/campaigns/DisplayCampaign';
-import { DEMO_PRODUCT_IMG } from '@/components/campaigns/demo';
 import { nodeToPngDataUrl } from '@/components/campaigns/ui';
 import ShoppingCampaign from '@/components/campaigns/ShoppingCampaign';
 import MetaFeedAd from '@/components/previews/MetaFeedAd';
@@ -218,14 +217,14 @@ export default function Home() {
   // Image Assets (up to 4)
   const [searchImageUrls, setSearchImageUrls] = useState<string[]>(['', '', '', '']);
 
-  // Shopping Product (Shopping / Performance Max campaigns) — starts with demo data
-  const [productTitle, setProductTitle] = useState('Wireless Bluetooth Headphones - Noise Cancelling');
-  const [productPrice, setProductPrice] = useState('$49.99');
-  const [productStore, setProductStore] = useState('Demo Store');
-  const [productImageUrl, setProductImageUrl] = useState(DEMO_PRODUCT_IMG);
-  const [productRating, setProductRating] = useState('4.5');
-  const [productReviewCount, setProductReviewCount] = useState('120');
-  const [productShipping, setProductShipping] = useState('Free shipping');
+  // Shopping Product (Shopping / Performance Max campaigns)
+  const [productTitle, setProductTitle] = useState('');
+  const [productPrice, setProductPrice] = useState('');
+  const [productStore, setProductStore] = useState('');
+  const [productImageUrl, setProductImageUrl] = useState('');
+  const [productRating, setProductRating] = useState('');
+  const [productReviewCount, setProductReviewCount] = useState('');
+  const [productShipping, setProductShipping] = useState('');
 
   // Active editor section (for non-search types)
   const [activeAssetSection, setActiveAssetSection] = useState<string>('headlines');

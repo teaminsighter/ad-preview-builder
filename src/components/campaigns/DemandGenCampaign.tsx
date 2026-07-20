@@ -7,7 +7,6 @@ import GmailAd from '@/components/previews/GmailAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import YouTubeShortsAd from '@/components/previews/YouTubeShortsAd';
 import { SectionCard, SummaryRow, GField, GToggle, InfoBanner, PhoneFrame, PlacementTabs, ReadyItem, AdStrength, DownloadPreviewButton } from './ui';
-import { DEMO_LANDSCAPE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'discover' | 'gmail' | 'youtube' | 'shorts';
 type Goal = 'conversions' | 'clicks' | 'conversion-value' | 'youtube-engagements';
@@ -30,22 +29,22 @@ export default function DemandGenCampaign() {
   const [useTargetCpa, setUseTargetCpa] = useState(false);
   const [targetCpa, setTargetCpa] = useState('');
   const [budgetType, setBudgetType] = useState<'daily' | 'total'>('daily');
-  const [budget, setBudget] = useState('50');
+  const [budget, setBudget] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [customerAcquisition, setCustomerAcquisition] = useState(false);
-  const [mainColor, setMainColor] = useState('#6366f1');
-  const [accentColor, setAccentColor] = useState('#a855f7');
+  const [mainColor, setMainColor] = useState('');
+  const [accentColor, setAccentColor] = useState('');
   const [font, setFont] = useState('Any font');
   const [euPolitical, setEuPolitical] = useState<'' | 'yes' | 'no'>('no');
 
-  // Ad creative — starts with demo data
-  const [businessName, setBusinessName] = useState('Demo Store');
-  const [logoUrl, setLogoUrl] = useState(DEMO_LOGO_IMG);
-  const [headline, setHeadline] = useState('Premium Wireless Headphones');
-  const [description, setDescription] = useState('Noise-cancelling headphones with 40-hour battery life. Free shipping on all orders.');
-  const [imageUrl, setImageUrl] = useState(DEMO_LANDSCAPE_IMG);
-  const [ctaText, setCtaText] = useState('Shop now');
+  // Ad creative
+  const [businessName, setBusinessName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [ctaText, setCtaText] = useState('Learn more');
 
   const [placement, setPlacement] = useState<Placement>('discover');
   const [loaded, setLoaded] = useState(false);

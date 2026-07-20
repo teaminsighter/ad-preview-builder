@@ -8,7 +8,6 @@ import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import GmailAd from '@/components/previews/GmailAd';
 import DiscoverAd from '@/components/previews/DiscoverAd';
 import { SectionCard, GField, AdStrength, PhoneFrame, PlacementTabs, DownloadPreviewButton } from './ui';
-import { DEMO_LANDSCAPE_IMG, DEMO_SQUARE_IMG, DEMO_LOGO_IMG } from './demo';
 
 type Placement = 'search' | 'display' | 'youtube' | 'gmail' | 'discover';
 
@@ -18,32 +17,23 @@ const CTA_OPTIONS = ['Automated', 'Learn more', 'Get quote', 'Apply now', 'Sign 
 
 export default function PMaxAssetGroup() {
   const [assetGroupName, setAssetGroupName] = useState('Asset Group 1');
-  const [finalUrl, setFinalUrl] = useState('https://www.demostore.com');
-  const [businessName, setBusinessName] = useState('Demo Store');
-  const [logoUrl, setLogoUrl] = useState(DEMO_LOGO_IMG);
-  const [headlines, setHeadlines] = useState<string[]>(
-    ['Premium Wireless Headphones', 'Free Shipping Over $50', 'Shop the New Collection', '40-Hour Battery Life', 'Noise Cancelling Audio', ...Array(10).fill('')]
-  );
+  const [finalUrl, setFinalUrl] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [headlines, setHeadlines] = useState<string[]>(Array(15).fill(''));
   const [visibleHeadlines, setVisibleHeadlines] = useState(5);
-  const [longHeadlines, setLongHeadlines] = useState<string[]>(
-    ['Experience Studio-Quality Sound with Demo Store Wireless Headphones', 'Demo Store | Premium Audio for Everyday Listening', ...Array(3).fill('')]
-  );
+  const [longHeadlines, setLongHeadlines] = useState<string[]>(Array(5).fill(''));
   const [visibleLongHeadlines, setVisibleLongHeadlines] = useState(2);
-  const [descriptions, setDescriptions] = useState<string[]>(
-    ['Noise-cancelling headphones with 40-hour battery life.', 'Free shipping and 30-day returns on all orders. Shop the full collection today.', ...Array(3).fill('')]
-  );
+  const [descriptions, setDescriptions] = useState<string[]>(Array(5).fill(''));
   const [visibleDescriptions, setVisibleDescriptions] = useState(2);
-  const [imageUrls, setImageUrls] = useState<string[]>([DEMO_LANDSCAPE_IMG, DEMO_SQUARE_IMG]);
-  const [videoUrl, setVideoUrl] = useState('https://youtube.com/watch?v=demo-store-ad');
-  const [sitelinks, setSitelinks] = useState<{ title: string; description1: string; description2: string }[]>([
-    { title: 'Best Sellers', description1: 'Our most popular headphones', description2: '' },
-    { title: 'New Arrivals', description1: 'Fresh drops every week', description2: '' },
-    { title: '', description1: '', description2: '' },
-    { title: '', description1: '', description2: '' },
-  ]);
-  const [ctaText, setCtaText] = useState('Shop now');
-  const [searchThemes, setSearchThemes] = useState('wireless headphones, bluetooth audio, noise cancelling');
-  const [audienceName, setAudienceName] = useState('Audio enthusiasts - In-market shoppers');
+  const [imageUrls, setImageUrls] = useState<string[]>(['', '']);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [sitelinks, setSitelinks] = useState<{ title: string; description1: string; description2: string }[]>(
+    Array(4).fill(null).map(() => ({ title: '', description1: '', description2: '' }))
+  );
+  const [ctaText, setCtaText] = useState('Automated');
+  const [searchThemes, setSearchThemes] = useState('');
+  const [audienceName, setAudienceName] = useState('');
   const [placement, setPlacement] = useState<Placement>('search');
   const [loaded, setLoaded] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);

@@ -9,6 +9,13 @@ import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
 import YouTubeShortsAd from '@/components/previews/YouTubeShortsAd';
 import GmailAd from '@/components/previews/GmailAd';
 import DiscoverAd from '@/components/previews/DiscoverAd';
+import GoogleShoppingAd from '@/components/previews/GoogleShoppingAd';
+import PMaxAssetGroup from '@/components/campaigns/PMaxAssetGroup';
+import DemandGenCampaign from '@/components/campaigns/DemandGenCampaign';
+import VideoCampaign from '@/components/campaigns/VideoCampaign';
+import DisplayCampaign from '@/components/campaigns/DisplayCampaign';
+import { DEMO_PRODUCT_IMG } from '@/components/campaigns/demo';
+import ShoppingCampaign from '@/components/campaigns/ShoppingCampaign';
 import MetaFeedAd from '@/components/previews/MetaFeedAd';
 import InstagramFeedAd from '@/components/previews/InstagramFeedAd';
 import InstagramStoryAd from '@/components/previews/InstagramStoryAd';
@@ -19,7 +26,8 @@ import LinkedInFeedAd from '@/components/previews/LinkedInFeedAd';
 import ImageUpload from '@/components/ImageUpload';
 
 type Platform = 'google' | 'meta' | 'tiktok' | 'linkedin' | 'utm' | 'library';
-type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover';
+type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover' | 'shopping';
+type GoogleCampaignType = 'pmax' | 'search' | 'demand-gen' | 'video' | 'display' | 'shopping';
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
 
 // UTM Parameter presets
@@ -34,7 +42,105 @@ const googleAdTypes: { id: GoogleAdType; label: string }[] = [
   { id: 'youtube-shorts', label: 'Shorts' },
   { id: 'gmail', label: 'Gmail' },
   { id: 'discover', label: 'Discover' },
+  { id: 'shopping', label: 'Shopping' },
 ];
+
+// Google campaign types (mirrors the Google Ads campaign creation screen).
+// Each campaign type maps to the placement formats it can serve on.
+const googleCampaignTypes: {
+  id: GoogleCampaignType;
+  label: string;
+  description: string;
+  channels: string[];
+  formats: GoogleAdType[];
+}[] = [
+  {
+    id: 'pmax',
+    label: 'Performance Max',
+    description: "Drive website traffic by reaching the right people wherever they're browsing with ads on Google Search, YouTube, Display, and more",
+    channels: ['google', 'youtube', 'gmail', 'maps', 'display'],
+    formats: ['search', 'display', 'youtube-instream', 'youtube-shorts', 'gmail', 'discover', 'shopping'],
+  },
+  {
+    id: 'search',
+    label: 'Search',
+    description: 'Drive website traffic from Google Search with text ads',
+    channels: ['google'],
+    formats: ['search'],
+  },
+  {
+    id: 'demand-gen',
+    label: 'Demand Gen',
+    description: 'Drive demand and conversions on YouTube, Google Display Network, and more with image and video ads',
+    channels: ['youtube', 'gmail', 'maps', 'display'],
+    formats: ['discover', 'gmail', 'youtube-instream', 'youtube-shorts'],
+  },
+  {
+    id: 'video',
+    label: 'Video',
+    description: 'Drive website traffic from YouTube with your video ads',
+    channels: ['youtube', 'display'],
+    formats: ['youtube-instream', 'youtube-shorts'],
+  },
+  {
+    id: 'display',
+    label: 'Display',
+    description: 'Reach potential customers across 3 million sites and apps with your creative',
+    channels: ['youtube', 'gmail', 'display'],
+    formats: ['display'],
+  },
+  {
+    id: 'shopping',
+    label: 'Shopping',
+    description: 'Promote your products from Merchant Center on Google Search with Shopping ads',
+    channels: ['google'],
+    formats: ['shopping'],
+  },
+];
+
+// Small colored channel icons shown on campaign type cards
+const channelIcon = (key: string) => {
+  switch (key) {
+    case 'google':
+      return (
+        <svg key={key} className="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+      );
+    case 'youtube':
+      return (
+        <svg key={key} className="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#FF0000" d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
+          <path fill="#FFFFFF" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+        </svg>
+      );
+    case 'gmail':
+      return (
+        <svg key={key} className="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 010 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+        </svg>
+      );
+    case 'maps':
+      return (
+        <svg key={key} className="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#34A853" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle fill="#FFFFFF" cx="12" cy="9" r="2.5"/>
+        </svg>
+      );
+    case 'display':
+      return (
+        <svg key={key} className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2">
+          <rect x="3" y="4" width="18" height="14" rx="2"/>
+          <path strokeLinecap="round" d="M8 21h8"/>
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
 
 const metaAdTypes: { id: MetaAdType; label: string }[] = [
   { id: 'fb-feed', label: 'FB Feed' },
@@ -46,8 +152,18 @@ const metaAdTypes: { id: MetaAdType; label: string }[] = [
 
 export default function Home() {
   const [platform, setPlatform] = useState<Platform>('google');
+  const [googleCampaignType, setGoogleCampaignType] = useState<GoogleCampaignType>('search');
   const [googleAdType, setGoogleAdType] = useState<GoogleAdType>('search');
   const [metaAdType, setMetaAdType] = useState<MetaAdType>('fb-feed');
+
+  // Switch campaign type; snap the ad format to one the campaign supports
+  const selectCampaignType = (id: GoogleCampaignType) => {
+    setGoogleCampaignType(id);
+    const campaign = googleCampaignTypes.find(c => c.id === id);
+    if (campaign && !campaign.formats.includes(googleAdType)) {
+      setGoogleAdType(campaign.formats[0]);
+    }
+  };
 
   // Dark Mode
   const [darkMode, setDarkMode] = useState(false);
@@ -101,6 +217,15 @@ export default function Home() {
 
   // Image Assets (up to 4)
   const [searchImageUrls, setSearchImageUrls] = useState<string[]>(['', '', '', '']);
+
+  // Shopping Product (Shopping / Performance Max campaigns) — starts with demo data
+  const [productTitle, setProductTitle] = useState('Wireless Bluetooth Headphones - Noise Cancelling');
+  const [productPrice, setProductPrice] = useState('$49.99');
+  const [productStore, setProductStore] = useState('Demo Store');
+  const [productImageUrl, setProductImageUrl] = useState(DEMO_PRODUCT_IMG);
+  const [productRating, setProductRating] = useState('4.5');
+  const [productReviewCount, setProductReviewCount] = useState('120');
+  const [productShipping, setProductShipping] = useState('Free shipping');
 
   // Active editor section (for non-search types)
   const [activeAssetSection, setActiveAssetSection] = useState<string>('headlines');
@@ -329,6 +454,7 @@ export default function Home() {
   const getAdData = () => ({
     // Settings
     platform,
+    googleCampaignType,
     googleAdType,
     metaAdType,
     // Google Ads
@@ -348,6 +474,14 @@ export default function Home() {
     priceAssets,
     promotion,
     searchImageUrls,
+    // Shopping Product
+    productTitle,
+    productPrice,
+    productStore,
+    productImageUrl,
+    productRating,
+    productReviewCount,
+    productShipping,
     // Meta Ads
     pageName,
     instagramAccount,
@@ -391,6 +525,13 @@ export default function Home() {
   // Load ad data from object
   const loadAdData = (data: Record<string, unknown>) => {
     if (data.platform) setPlatform(data.platform as Platform);
+    if (data.googleCampaignType) {
+      setGoogleCampaignType(data.googleCampaignType as GoogleCampaignType);
+    } else if (data.googleAdType) {
+      // Older saves have no campaign type — derive one that supports the saved format
+      const derived = googleCampaignTypes.find(c => c.formats.includes(data.googleAdType as GoogleAdType));
+      if (derived) setGoogleCampaignType(derived.id);
+    }
     if (data.googleAdType) setGoogleAdType(data.googleAdType as GoogleAdType);
     if (data.metaAdType) setMetaAdType(data.metaAdType as MetaAdType);
     if (data.businessName) setBusinessName(data.businessName as string);
@@ -409,6 +550,13 @@ export default function Home() {
     if (data.priceAssets) setPriceAssets(data.priceAssets as typeof priceAssets);
     if (data.promotion) setPromotion(data.promotion as typeof promotion);
     if (data.searchImageUrls) setSearchImageUrls(data.searchImageUrls as string[]);
+    if (data.productTitle) setProductTitle(data.productTitle as string);
+    if (data.productPrice) setProductPrice(data.productPrice as string);
+    if (data.productStore) setProductStore(data.productStore as string);
+    if (data.productImageUrl) setProductImageUrl(data.productImageUrl as string);
+    if (data.productRating) setProductRating(data.productRating as string);
+    if (data.productReviewCount) setProductReviewCount(data.productReviewCount as string);
+    if (data.productShipping) setProductShipping(data.productShipping as string);
     if (data.pageName) setPageName(data.pageName as string);
     if (data.instagramAccount) setInstagramAccount(data.instagramAccount as string);
     if (data.pageImageUrl) setPageImageUrl(data.pageImageUrl as string);
@@ -435,7 +583,14 @@ export default function Home() {
 
     // Flatten data for CSV
     rows.push(['Platform', data.platform]);
+    rows.push(['Google Campaign Type', data.googleCampaignType]);
     rows.push(['Google Ad Type', data.googleAdType]);
+
+    // Selected campaign builder data (PMax, Demand Gen, Video, Display, Shopping)
+    const campaignRows = buildCampaignRows(data.googleCampaignType as GoogleCampaignType);
+    if (campaignRows) {
+      campaignRows.forEach(r => rows.push([`${r[0]} - ${r[1]}`, r[2]]));
+    }
     rows.push(['Meta Ad Type', data.metaAdType]);
     rows.push(['Business Name', data.businessName]);
     rows.push(['Final URL', data.finalUrl]);
@@ -474,6 +629,16 @@ export default function Home() {
       if (v) rows.push([`Snippet Value ${i + 1}`, v]);
     });
 
+    // Shopping Product
+    if (data.productTitle) {
+      rows.push(['Product Title', data.productTitle]);
+      rows.push(['Product Price', data.productPrice]);
+      rows.push(['Product Store', data.productStore]);
+      rows.push(['Product Rating', data.productRating]);
+      rows.push(['Product Reviews', data.productReviewCount]);
+      rows.push(['Product Shipping', data.productShipping]);
+    }
+
     // Meta Ads
     rows.push(['Page Name', data.pageName]);
     rows.push(['Instagram Account', data.instagramAccount]);
@@ -506,9 +671,16 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  // Export to JSON (full data)
+  // Export to JSON (full data, including every campaign builder's saved data)
   const exportToJSON = () => {
-    const data = getAdData();
+    const campaigns: Record<string, unknown> = {};
+    CAMPAIGN_STORES.forEach(({ key }) => {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) campaigns[key] = JSON.parse(saved);
+      } catch { /* skip corrupt store */ }
+    });
+    const data = { ...getAdData(), campaigns };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -540,12 +712,130 @@ export default function Home() {
     }
   };
 
-  // Copy Google Ads data only
+  // localStorage stores used by the campaign builder components
+  const CAMPAIGN_STORES: { type: GoogleCampaignType; key: string }[] = [
+    { type: 'pmax', key: 'pmaxAssetGroupData' },
+    { type: 'demand-gen', key: 'demandGenCampaignData' },
+    { type: 'video', key: 'videoCampaignData' },
+    { type: 'display', key: 'displayCampaignData' },
+    { type: 'shopping', key: 'shoppingCampaignData' },
+  ];
+
+  // Build sheet rows for the currently selected campaign builder from its saved data.
+  // Returns null for 'search' (which uses the classic editor fields).
+  const buildCampaignRows = (type: GoogleCampaignType): string[][] | null => {
+    const store = CAMPAIGN_STORES.find(c => c.type === type);
+    if (!store) return null;
+    let d: Record<string, unknown> = {};
+    try {
+      d = JSON.parse(localStorage.getItem(store.key) || '{}');
+    } catch { /* corrupt store — export what we can */ }
+    const s = (v: unknown) => (typeof v === 'string' ? v : '');
+    const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+    const rows: string[][] = [];
+    const push = (cat: string, field: string, value: string, limit = '') => {
+      if (value) rows.push([cat, field, value, limit ? String(value.length) : '', limit]);
+    };
+
+    switch (type) {
+      case 'pmax':
+        push('Settings', 'Asset group name', s(d.assetGroupName));
+        push('Settings', 'Final URL', s(d.finalUrl));
+        push('Settings', 'Business name', s(d.businessName), '25');
+        push('Settings', 'Call to action', s(d.ctaText));
+        arr(d.headlines).forEach((h, i) => push('Headlines', `Headline ${i + 1}`, s(h), '30'));
+        arr(d.longHeadlines).forEach((h, i) => push('Long headlines', `Long headline ${i + 1}`, s(h), '90'));
+        arr(d.descriptions).forEach((v, i) => push('Descriptions', `Description ${i + 1}`, s(v), i === 0 ? '60' : '90'));
+        arr(d.sitelinks).forEach((sl, i) => {
+          const item = sl as Record<string, unknown>;
+          push('Sitelinks', `Sitelink ${i + 1}`, s(item?.title), '25');
+          push('Sitelinks', `Sitelink ${i + 1} description`, s(item?.description1), '35');
+        });
+        push('Assets', 'Video URL', s(d.videoUrl));
+        push('Assets', 'Images', arr(d.imageUrls).filter(Boolean).length ? `${arr(d.imageUrls).filter(Boolean).length} added` : '');
+        push('Signals', 'Search themes', s(d.searchThemes));
+        push('Signals', 'Audience signal', s(d.audienceName));
+        break;
+
+      case 'demand-gen':
+        push('Campaign', 'Campaign name', s(d.campaignName), '256');
+        push('Campaign', 'Campaign goal', s(d.goal));
+        push('Campaign', 'Conversion goal', s(d.conversionGoal));
+        push('Campaign', 'Budget', s(d.budget) ? `$${s(d.budget)} (${s(d.budgetType) || 'daily'})` : '');
+        push('Campaign', 'Start date', s(d.startDate));
+        push('Campaign', 'End date', s(d.endDate));
+        push('Campaign', 'Target CPA', d.useTargetCpa ? `$${s(d.targetCpa)}` : '');
+        push('Campaign', 'Main color', s(d.mainColor));
+        push('Campaign', 'Accent color', s(d.accentColor));
+        push('Campaign', 'Font', s(d.font));
+        push('Campaign', 'EU political ads', s(d.euPolitical) ? (d.euPolitical === 'yes' ? 'Yes' : 'No') : '');
+        push('Ad', 'Business name', s(d.businessName), '25');
+        push('Ad', 'Headline', s(d.headline), '40');
+        push('Ad', 'Description', s(d.description), '90');
+        push('Ad', 'Call to action', s(d.ctaText));
+        break;
+
+      case 'video':
+        push('Campaign', 'Campaign name', s(d.campaignName), '256');
+        push('Campaign', 'Bidding', s(d.bidding));
+        push('Campaign', 'Budget', s(d.budget) ? `$${s(d.budget)} (${s(d.budgetType) || 'daily'})` : '');
+        push('Campaign', 'Networks', [d.networkSearch && 'YouTube search', d.networkVideos && 'YouTube videos', d.networkPartners && 'Video partners'].filter(Boolean).join(', '));
+        push('Ad', 'Video URL', s(d.videoUrl));
+        push('Ad', 'Channel name', s(d.channelName));
+        push('Ad', 'Headline', s(d.headline), '90');
+        push('Ad', 'Description', s(d.description), '70');
+        push('Ad', 'Display URL', s(d.displayUrl));
+        push('Ad', 'Call to action', s(d.ctaText));
+        break;
+
+      case 'display':
+        push('Settings', 'Final URL', s(d.finalUrl));
+        push('Settings', 'Business name', s(d.businessName), '25');
+        arr(d.headlines).forEach((h, i) => push('Headlines', `Headline ${i + 1}`, s(h), '30'));
+        push('Headlines', 'Long headline', s(d.longHeadline), '90');
+        arr(d.descriptions).forEach((v, i) => push('Descriptions', `Description ${i + 1}`, s(v), '90'));
+        push('Assets', 'Video URL', s(d.videoUrl));
+        push('Assets', 'Call to action', s(d.ctaText));
+        break;
+
+      case 'shopping':
+        push('Campaign', 'Campaign name', s(d.campaignName), '256');
+        push('Campaign', 'Merchant Center account', s(d.merchantAccount));
+        push('Campaign', 'Country of sale', s(d.feedCountry));
+        push('Campaign', 'Campaign priority', s(d.priority));
+        push('Campaign', 'Networks', [d.networkSearch && 'Google Search Network', d.networkPartners && 'Search partners'].filter(Boolean).join(', '));
+        push('Campaign', 'Budget', s(d.budget) ? `$${s(d.budget)} (${s(d.budgetType) || 'daily'})` : '');
+        push('Product', 'Product title', productTitle, '150');
+        push('Product', 'Price', productPrice);
+        push('Product', 'Store name', productStore);
+        push('Product', 'Rating', productRating);
+        push('Product', 'Review count', productReviewCount);
+        push('Product', 'Shipping', productShipping);
+        break;
+    }
+    return rows;
+  };
+
+  // Copy Google Ads data only — exports the currently selected campaign type
   const copyGoogleAdsToSheets = async () => {
+    const campaignLabel = googleCampaignTypes.find(c => c.id === googleCampaignType)?.label || googleCampaignType;
+    const campaignRows = buildCampaignRows(googleCampaignType);
+    if (campaignRows) {
+      const rows: string[][] = [
+        ['Category', 'Field', 'Value', 'Character Count', 'Limit'],
+        ['Settings', 'Campaign Type', campaignLabel, '', ''],
+        ...campaignRows,
+      ];
+      await copyToSheets(rows, `Google Ads (${campaignLabel})`);
+      return;
+    }
+
+    // Search campaign — classic editor fields
     const data = getAdData();
     const rows: string[][] = [];
 
     rows.push(['Category', 'Field', 'Value', 'Character Count', 'Limit']);
+    rows.push(['Settings', 'Campaign Type', campaignLabel, '', '']);
     rows.push(['Settings', 'Business Name', data.businessName, String(data.businessName.length), '25']);
     rows.push(['Settings', 'Final URL', data.finalUrl, '', '']);
     rows.push(['Settings', 'Display URL', data.displayUrl, '', '']);
@@ -577,6 +867,15 @@ export default function Home() {
     data.snippetValues.forEach((v, i) => {
       if (v) rows.push(['Snippets', `Value ${i + 1}`, v, String(v.length), '25']);
     });
+
+    if (data.productTitle) {
+      rows.push(['Shopping', 'Product Title', data.productTitle, String(data.productTitle.length), '150']);
+      rows.push(['Shopping', 'Price', data.productPrice, '', '']);
+      rows.push(['Shopping', 'Store', data.productStore, '', '']);
+      rows.push(['Shopping', 'Rating', data.productRating, '', '']);
+      rows.push(['Shopping', 'Reviews', data.productReviewCount, '', '']);
+      rows.push(['Shopping', 'Shipping', data.productShipping, '', '']);
+    }
 
     await copyToSheets(rows, 'Google Ads');
   };
@@ -616,7 +915,12 @@ export default function Home() {
     // Header
     rows.push(['Platform', 'Category', 'Field', 'Value', 'Character Count', 'Limit']);
 
-    // Google Ads
+    // Google Ads — selected campaign builder data when not on Search
+    rows.push(['Google Ads', 'Settings', 'Campaign Type', googleCampaignTypes.find(c => c.id === data.googleCampaignType)?.label || data.googleCampaignType, '', '']);
+    const campaignRows = buildCampaignRows(data.googleCampaignType as GoogleCampaignType);
+    if (campaignRows) {
+      campaignRows.forEach(r => rows.push(['Google Ads', ...r]));
+    }
     rows.push(['Google Ads', 'Settings', 'Business Name', data.businessName, String(data.businessName.length), '25']);
     rows.push(['Google Ads', 'Settings', 'Final URL', data.finalUrl, '', '']);
     rows.push(['Google Ads', 'Settings', 'Display URL', data.displayUrl, '', '']);
@@ -681,6 +985,17 @@ export default function Home() {
       try {
         const data = JSON.parse(e.target?.result as string);
         loadAdData(data);
+        // Restore campaign builder stores, then reload so the builders pick them up
+        if (data.campaigns && typeof data.campaigns === 'object') {
+          Object.entries(data.campaigns as Record<string, unknown>).forEach(([key, value]) => {
+            if (CAMPAIGN_STORES.some(c => c.key === key)) {
+              localStorage.setItem(key, JSON.stringify(value));
+            }
+          });
+          alert('Imported successfully! Reloading to apply campaign data.');
+          window.location.reload();
+          return;
+        }
         alert('Imported successfully!');
       } catch {
         alert('Error reading file. Please use a valid JSON file.');
@@ -712,7 +1027,9 @@ export default function Home() {
       sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
       promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
       primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaCtaText,
-      metaDestinationUrl, linkDisplay, platform, googleAdType, metaAdType]);
+      metaDestinationUrl, linkDisplay, platform, googleCampaignType, googleAdType, metaAdType,
+      productTitle, productPrice, productStore, productImageUrl, productRating,
+      productReviewCount, productShipping]);
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {
@@ -1503,6 +1820,87 @@ export default function Home() {
               onChange={setLogoUrl}
               aspectRatio="1:1"
             />
+          </div>
+        );
+
+      case 'shopping':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Product Title</label>
+              <input
+                type="text"
+                value={productTitle}
+                onChange={(e) => setProductTitle(e.target.value)}
+                placeholder="e.g. Nike Air Max 270 Running Shoes"
+                maxLength={150}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">{productTitle.length}/150</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                <input
+                  type="text"
+                  value={productPrice}
+                  onChange={(e) => setProductPrice(e.target.value)}
+                  placeholder="$99.99"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Store Name</label>
+                <input
+                  type="text"
+                  value={productStore}
+                  onChange={(e) => setProductStore(e.target.value)}
+                  placeholder="Your Store"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <ImageUpload
+              label="Product Image (1:1)"
+              value={productImageUrl}
+              onChange={setProductImageUrl}
+              aspectRatio="1:1"
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rating (0-5)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={productRating}
+                  onChange={(e) => setProductRating(e.target.value)}
+                  placeholder="4.5"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Review Count</label>
+                <input
+                  type="text"
+                  value={productReviewCount}
+                  onChange={(e) => setProductReviewCount(e.target.value)}
+                  placeholder="120"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Text</label>
+              <input
+                type="text"
+                value={productShipping}
+                onChange={(e) => setProductShipping(e.target.value)}
+                placeholder="Free shipping"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         );
     }
@@ -2576,6 +2974,18 @@ export default function Home() {
         return <GmailAd senderName={businessName} subject={headline} previewText={description} logoUrl={logoUrl} />;
       case 'discover':
         return <DiscoverAd headline={headline} description={description} businessName={businessName} imageUrl={imageUrl} logoUrl={logoUrl} />;
+      case 'shopping':
+        return (
+          <GoogleShoppingAd
+            productTitle={productTitle}
+            productPrice={productPrice}
+            storeName={productStore || businessName}
+            imageUrl={productImageUrl}
+            rating={productRating}
+            reviewCount={productReviewCount}
+            shipping={productShipping}
+          />
+        );
     }
   };
 
@@ -2659,7 +3069,7 @@ export default function Home() {
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Google Ads Only
+                    Google Ads ({googleCampaignTypes.find(c => c.id === googleCampaignType)?.label})
                   </button>
                   <button
                     onClick={copyMetaAdsToSheets}
@@ -2827,40 +3237,56 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Sub Tabs */}
-      {(platform === 'google' || platform === 'meta') && (
+      {/* Campaign Type Selector (Google) */}
+      {platform === 'google' && (
+        <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Campaign Type</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              {googleCampaignTypes.map((campaign) => (
+                <button
+                  key={campaign.id}
+                  onClick={() => selectCampaignType(campaign.id)}
+                  className={`text-left p-3 rounded-xl border transition-all duration-300 bg-white ${
+                    googleCampaignType === campaign.id
+                      ? 'border-blue-600 ring-2 ring-blue-200 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-md card-hover'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {campaign.channels.map((c) => channelIcon(c))}
+                  </div>
+                  <p className={`text-sm font-semibold ${googleCampaignType === campaign.id ? 'text-blue-700' : 'text-gray-800'}`}>
+                    {campaign.label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-3">
+                    {campaign.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub Tabs (Meta ad formats — Google campaigns handle placements inside their builders) */}
+      {platform === 'meta' && (
         <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
-            <nav className="flex gap-2 overflow-x-auto py-3">
-              {platform === 'google' ? (
-                googleAdTypes.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setGoogleAdType(type.id)}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
-                      googleAdType === type.id
-                        ? 'btn-gradient text-white shadow-lg glow'
-                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))
-              ) : (
-                metaAdTypes.map((type) => (
-                  <button
-                    key={type.id}
-                    onClick={() => setMetaAdType(type.id)}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
-                      metaAdType === type.id
-                        ? 'btn-gradient text-white shadow-lg glow'
-                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))
-              )}
+            <nav className="flex gap-2 overflow-x-auto py-3 items-center">
+              {metaAdTypes.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setMetaAdType(type.id)}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
+                    metaAdType === type.id
+                      ? 'btn-gradient text-white shadow-lg glow'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
             </nav>
           </div>
         </div>
@@ -2879,6 +3305,24 @@ export default function Home() {
               {renderAdLibrary()}
             </div>
           </div>
+        ) : platform === 'google' && googleCampaignType === 'pmax' ? (
+          <PMaxAssetGroup />
+        ) : platform === 'google' && googleCampaignType === 'demand-gen' ? (
+          <DemandGenCampaign />
+        ) : platform === 'google' && googleCampaignType === 'video' ? (
+          <VideoCampaign />
+        ) : platform === 'google' && googleCampaignType === 'display' ? (
+          <DisplayCampaign />
+        ) : platform === 'google' && googleCampaignType === 'shopping' ? (
+          <ShoppingCampaign
+            productTitle={productTitle} setProductTitle={setProductTitle}
+            productPrice={productPrice} setProductPrice={setProductPrice}
+            productStore={productStore} setProductStore={setProductStore}
+            productImageUrl={productImageUrl} setProductImageUrl={setProductImageUrl}
+            productRating={productRating} setProductRating={setProductRating}
+            productReviewCount={productReviewCount} setProductReviewCount={setProductReviewCount}
+            productShipping={productShipping} setProductShipping={setProductShipping}
+          />
         ) : (
           /* Two Column Layout for Editors */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

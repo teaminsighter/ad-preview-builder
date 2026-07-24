@@ -25,6 +25,7 @@ import LinkedInFeedAd from '@/components/previews/LinkedInFeedAd';
 import ImageUpload from '@/components/ImageUpload';
 import MetaMediaUpload from '@/components/MetaMediaUpload';
 import { META_SPECS, META_TEXT_LIMITS, CAROUSEL_SPEC, MediaKind, looksLikeVideoUrl } from '@/lib/metaSpecs';
+import { encodeShareData, decodeShareData, downscaleImage } from '@/lib/shareLink';
 
 type Platform = 'google' | 'meta' | 'tiktok' | 'linkedin' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover' | 'shopping';
@@ -168,6 +169,12 @@ export default function Home() {
 
   // Dark Mode
   const [darkMode, setDarkMode] = useState(false);
+
+  // Shared-preview mode: set when the page is opened via a #s=... share link.
+  // The recipient sees a read-only preview; auto-save is paused so their own
+  // draft isn't overwritten until they explicitly open the ad in the builder.
+  const [sharedView, setSharedView] = useState(false);
+  const [shareState, setShareState] = useState<'idle' | 'busy' | 'copied' | 'failed'>('idle');
 
   // Toggle dark mode
   useEffect(() => {
@@ -525,6 +532,36 @@ export default function Home() {
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Failed to export PDF. Please try again.');
+    }
+  };
+
+  // Build a shareable preview link: compress the whole ad into the URL hash
+  // and copy it to the clipboard. Uploaded images are shrunk to fit; videos
+  // (blob URLs) can't travel in a link and are dropped with a notice.
+  const shareAdPreview = async () => {
+    if (shareState === 'busy') return;
+    setShareState('busy');
+    try {
+      const data = { ...getAdData() };
+      const hadVideo = metaMediaUrls.some((u, i) => u && (metaMediaKinds[i] === 'video' || u.startsWith('blob:')));
+      data.pageImageUrl = await downscaleImage(data.pageImageUrl, 160, 0.7);
+      data.businessLogoUrl = await downscaleImage(data.businessLogoUrl, 160, 0.7);
+      data.metaMediaUrls = await Promise.all(data.metaMediaUrls.map(u => downscaleImage(u)));
+      data.searchImageUrls = await Promise.all(data.searchImageUrls.map(u => downscaleImage(u)));
+      data.productImageUrl = await downscaleImage(data.productImageUrl);
+      const encoded = await encodeShareData(data);
+      const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`;
+      await navigator.clipboard.writeText(url);
+      setShareState('copied');
+      setTimeout(() => setShareState('idle'), 2500);
+      const notes: string[] = [];
+      if (hadVideo) notes.push('Videos cannot be included in share links — the preview will use your other media.');
+      if (url.length > 12000) notes.push('The link embeds your uploaded images, so it is long — paste it directly into a browser, email or doc rather than chat apps. Tip: media added via image URLs keeps links short.');
+      if (notes.length) alert(`Share link copied!\n\n${notes.join('\n\n')}`);
+    } catch (error) {
+      console.error('Share link failed:', error);
+      setShareState('failed');
+      setTimeout(() => setShareState('idle'), 2500);
     }
   };
 
@@ -1119,8 +1156,20 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Auto-load from localStorage on mount
+  // On mount: a #s=... share link takes priority, otherwise restore localStorage
   useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#s=')) {
+      decodeShareData(hash.slice(3))
+        .then((data) => {
+          loadAdData(data);
+          setSharedView(true);
+        })
+        .catch(() => {
+          alert('This share link is invalid or was truncated. Ask the sender to copy the full link.');
+        });
+      return;
+    }
     const saved = localStorage.getItem('adPreviewData');
     if (saved) {
       try {
@@ -1132,11 +1181,13 @@ export default function Home() {
     }
   }, []);
 
-  // Auto-save to localStorage on data change
+  // Auto-save to localStorage on data change (paused in shared view so a
+  // received link never silently overwrites the viewer's own draft)
   useEffect(() => {
+    if (sharedView) return;
     const data = getAdData();
     localStorage.setItem('adPreviewData', JSON.stringify(data));
-  }, [businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
+  }, [sharedView, businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
       sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
       promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
       primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaMediaKinds, metaCtaText,
@@ -3324,6 +3375,89 @@ export default function Home() {
     );
   };
 
+  // Read-only shared view for recipients of a #s=... link: just the preview,
+  // placement tabs and export — no editor, nothing written to their storage.
+  if (sharedView) {
+    return (
+      <div className="min-h-screen gradient-bg">
+        <header className="glass shadow-xl border-b border-white/20">
+          <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold gradient-text">Ad Preview</h1>
+              <p className="text-gray-600 text-sm mt-1">
+                {platform === 'meta' ? 'Meta Ads' : platform === 'google' ? 'Google Ads' : platform === 'tiktok' ? 'TikTok' : 'LinkedIn'} preview shared with you
+                {metaAdName && platform === 'meta' ? ` · ${metaAdName}` : ''}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (confirm('Open this shared ad in the builder? It will replace your currently saved draft.')) {
+                  window.location.hash = '';
+                  setSharedView(false);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Open in builder
+            </button>
+          </div>
+        </header>
+        <main className="max-w-3xl mx-auto px-4 py-10">
+          {platform === 'meta' && (
+            <nav className="flex gap-2 overflow-x-auto pb-4 items-center justify-center">
+              {metaAdTypes.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setMetaAdType(type.id)}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
+                    metaAdType === type.id
+                      ? 'btn-gradient text-white shadow-lg glow'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </nav>
+          )}
+          <div className="glass rounded-2xl shadow-xl p-6 border border-white/20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold gradient-text">Preview</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={exportAsImage}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  title="Export as PNG"
+                >
+                  PNG
+                </button>
+                <button
+                  onClick={exportAsPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  title="Export as PDF"
+                >
+                  PDF
+                </button>
+              </div>
+            </div>
+            <div
+              ref={previewRef}
+              className="flex items-center justify-center min-h-[500px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 overflow-auto border border-gray-100"
+            >
+              {platform === 'google' ? renderGooglePreview() :
+               platform === 'meta' ? renderMetaPreview() :
+               platform === 'tiktok' ? renderTikTokPreview() :
+               renderLinkedInPreview()}
+            </div>
+          </div>
+          <p className="text-center text-xs text-white/70 mt-6">
+            Built with <a href={`${typeof window !== 'undefined' ? window.location.origin : ''}`} className="underline">Ad Preview Builder</a>
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen gradient-bg">
       {/* Hidden file input for import */}
@@ -3668,6 +3802,23 @@ export default function Home() {
                 </h2>
                 {platform !== 'utm' && (
                   <div className="flex gap-2">
+                    <button
+                      onClick={shareAdPreview}
+                      disabled={shareState === 'busy'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors disabled:opacity-60 ${
+                        shareState === 'copied'
+                          ? 'text-green-700 bg-green-50 border-green-300'
+                          : shareState === 'failed'
+                          ? 'text-red-600 bg-white border-red-300'
+                          : 'text-white btn-gradient border-transparent shadow hover:shadow-md'
+                      }`}
+                      title="Copy a shareable preview link"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      {shareState === 'busy' ? 'Copying…' : shareState === 'copied' ? 'Link copied!' : shareState === 'failed' ? 'Failed' : 'Share'}
+                    </button>
                     <button
                       onClick={exportAsImage}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"

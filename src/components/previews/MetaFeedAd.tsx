@@ -1,5 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
+interface CarouselCard {
+  url: string;
+  kind?: 'image' | 'video';
+}
+
 interface MetaFeedAdProps {
   pageName: string;
   pageImageUrl?: string;
@@ -7,6 +14,8 @@ interface MetaFeedAdProps {
   headline: string;
   description: string;
   imageUrl?: string;
+  mediaKind?: 'image' | 'video';
+  carouselCards?: CarouselCard[];
   ctaText?: string;
   linkDisplay?: string;
 }
@@ -18,23 +27,28 @@ export default function MetaFeedAd({
   headline,
   description,
   imageUrl,
+  mediaKind,
+  carouselCards,
   ctaText = 'Learn More',
   linkDisplay = 'example.com',
 }: MetaFeedAdProps) {
+  const isCarousel = carouselCards && carouselCards.length >= 2;
+
   return (
-    <div className="bg-white rounded-lg shadow-md max-w-[500px] font-sans">
+    <div className="bg-white rounded-lg shadow-md max-w-[500px] w-[380px] font-sans">
       {/* Header */}
       <div className="p-3 flex items-center gap-2">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center overflow-hidden">
           {pageImageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img src={pageImageUrl} alt={pageName} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-white font-bold">{pageName.charAt(0)}</span>
+            <span className="text-white font-bold">{(pageName || 'P').charAt(0)}</span>
           )}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-1">
-            <span className="font-semibold text-gray-900 text-sm">{pageName}</span>
+            <span className="font-semibold text-gray-900 text-sm">{pageName || 'Page Name'}</span>
             <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
             </svg>
@@ -61,32 +75,54 @@ export default function MetaFeedAd({
         </p>
       </div>
 
-      {/* Image */}
-      <div className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
-        {imageUrl ? (
-          <img src={imageUrl} alt="Ad" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-            </svg>
+      {isCarousel ? (
+        /* Carousel cards (2–10, each with its own link band) */
+        <div className="flex gap-2 overflow-x-auto px-3 pb-1">
+          {carouselCards!.map((card, i) => (
+            <div key={i} className="flex-shrink-0 w-[240px] border border-gray-200 rounded-lg overflow-hidden">
+              <div className="aspect-square bg-gray-100">
+                <AdMedia url={card.url} kind={card.kind} alt={`Card ${i + 1}`} />
+              </div>
+              <div className="px-2 py-2 bg-gray-50 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 text-xs truncate">{headline || 'Your Headline Here'}</p>
+                  <p className="text-[11px] text-gray-500 truncate">{linkDisplay || 'example.com'}</p>
+                </div>
+                <button className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-2.5 rounded text-xs">
+                  {ctaText}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Media — Meta recommends 4:5 for feed */}
+          <div className="aspect-[4/5] bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
+            {imageUrl ? (
+              <AdMedia url={imageUrl} kind={mediaKind} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Link Preview */}
-      <div className="px-3 py-2 bg-gray-100 border-t border-gray-200">
-        <p className="text-xs text-gray-500 uppercase">{linkDisplay}</p>
-        <p className="font-semibold text-gray-900 text-sm line-clamp-1">{headline || 'Your Headline Here'}</p>
-        <p className="text-sm text-gray-500 line-clamp-1">{description || 'Your description here'}</p>
-      </div>
-
-      {/* CTA */}
-      <div className="px-3 py-2 border-t border-gray-200">
-        <button className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded text-sm">
-          {ctaText}
-        </button>
-      </div>
+          {/* Link band — display link, headline, description with CTA on the right */}
+          <div className="px-3 py-2.5 bg-gray-100 border-t border-gray-200 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-gray-500 uppercase truncate">{linkDisplay || 'example.com'}</p>
+              <p className="font-semibold text-gray-900 text-sm line-clamp-1">{headline || 'Your Headline Here'}</p>
+              {description && <p className="text-sm text-gray-500 line-clamp-1">{description}</p>}
+            </div>
+            <button className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1.5 px-3 rounded text-sm">
+              {ctaText}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Engagement */}
       <div className="px-3 py-2 border-t border-gray-200 flex items-center justify-between text-gray-500 text-sm">

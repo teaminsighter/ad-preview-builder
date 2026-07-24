@@ -1,9 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
 interface InstagramFeedAdProps {
   username: string;
   profileImageUrl?: string;
   imageUrl?: string;
+  mediaKind?: 'image' | 'video';
   caption: string;
   ctaText?: string;
   website?: string;
@@ -13,6 +16,7 @@ export default function InstagramFeedAd({
   username,
   profileImageUrl,
   imageUrl,
+  mediaKind,
   caption,
   ctaText = 'Learn More',
   website = 'example.com',
@@ -53,7 +57,7 @@ export default function InstagramFeedAd({
       {/* Image */}
       <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative">
         {imageUrl ? (
-          <img src={imageUrl} alt="Ad" className="w-full h-full object-cover" />
+          <AdMedia url={imageUrl} kind={mediaKind} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">

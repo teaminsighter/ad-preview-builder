@@ -23,6 +23,8 @@ import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
 import TikTokFeedAd from '@/components/previews/TikTokFeedAd';
 import LinkedInFeedAd from '@/components/previews/LinkedInFeedAd';
 import ImageUpload from '@/components/ImageUpload';
+import MetaMediaUpload from '@/components/MetaMediaUpload';
+import { META_SPECS, META_TEXT_LIMITS, CAROUSEL_SPEC, MediaKind, looksLikeVideoUrl } from '@/lib/metaSpecs';
 
 type Platform = 'google' | 'meta' | 'tiktok' | 'linkedin' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover' | 'shopping';
@@ -277,9 +279,19 @@ export default function Home() {
   const priceUnits = ['', 'hour', 'day', 'week', 'month', 'year', 'night', 'item', 'session'];
 
   // Meta Ads State
+  const [metaAdName, setMetaAdName] = useState('');
+  const [partnershipAd, setPartnershipAd] = useState(false);
   const [pageName, setPageName] = useState('');
   const [instagramAccount, setInstagramAccount] = useState('');
   const [pageImageUrl, setPageImageUrl] = useState('');
+
+  // Ad setup (mirrors Ads Manager: creative source + format)
+  const [metaCreativeSource, setMetaCreativeSource] = useState<'manual' | 'catalogue'>('manual');
+  const [metaFormat, setMetaFormat] = useState<'single' | 'carousel'>('single');
+  const [multiAdvertiser, setMultiAdvertiser] = useState(false);
+
+  // Browser add-ons (Destination section)
+  const [browserAddon, setBrowserAddon] = useState<'none' | 'call' | 'messenger' | 'whatsapp' | 'instant-form'>('none');
 
   // Primary Text variations (up to 5)
   const [primaryTexts, setPrimaryTexts] = useState<string[]>(Array(5).fill(''));
@@ -299,9 +311,43 @@ export default function Home() {
   const [description, setDescription] = useState('');
   const [caption, setCaption] = useState('');
 
-  // Media
-  const [metaMediaUrls, setMetaMediaUrls] = useState<string[]>(['', '', '', '']);
+  // Media — Ads Manager supports up to 10 media per ad
+  const [metaMediaUrls, setMetaMediaUrls] = useState<string[]>(Array(10).fill(''));
+  const [metaMediaKinds, setMetaMediaKinds] = useState<MediaKind[]>(Array(10).fill('image'));
+  // Probed aspect ratio (w/h) per media slot — lets previews auto-pick the
+  // best-fitting media per placement, like Meta's placement customisation
+  const [metaMediaRatios, setMetaMediaRatios] = useState<(number | null)[]>(Array(10).fill(null));
   const [metaImageUrl, setMetaImageUrl] = useState('');
+
+  // Probe each media's natural dimensions whenever a slot changes
+  useEffect(() => {
+    metaMediaUrls.forEach((url, i) => {
+      const record = (ratio: number | null) => {
+        setMetaMediaRatios(prev => {
+          if (prev[i] === ratio || (ratio !== null && prev[i] !== null && Math.abs(prev[i]! - ratio) < 0.001)) return prev;
+          return prev.map((r, j) => (j === i ? ratio : r));
+        });
+      };
+      if (!url) {
+        record(null);
+        return;
+      }
+      if (metaMediaKinds[i] === 'video' || looksLikeVideoUrl(url)) {
+        const v = document.createElement('video');
+        v.preload = 'metadata';
+        v.onloadedmetadata = () => {
+          if (v.videoWidth && v.videoHeight) record(v.videoWidth / v.videoHeight);
+        };
+        v.src = url;
+      } else {
+        const img = new Image();
+        img.onload = () => {
+          if (img.naturalWidth && img.naturalHeight) record(img.naturalWidth / img.naturalHeight);
+        };
+        img.src = url;
+      }
+    });
+  }, [metaMediaUrls, metaMediaKinds]);
 
   // CTA and Destination
   const [metaCtaText, setMetaCtaText] = useState('Learn More');
@@ -316,20 +362,55 @@ export default function Home() {
   // Customer Lifecycle Strategy (2026 update)
   const [lifecycleStrategy, setLifecycleStrategy] = useState<'all' | 'new-customers'>('all');
 
-  // Expanded sections for Meta
+  // Expanded sections for Meta (ordered like Ads Manager)
   const [metaExpandedSections, setMetaExpandedSections] = useState<Record<string, boolean>>({
-    advantagePlus: true,
+    adName: true,
     identity: true,
+    adSetup: true,
+    destination: true,
     media: true,
     primaryText: true,
-    headlines: false,
+    headlines: true,
     description: false,
-    destination: false,
-    tracking: false,
+    advantagePlus: false,
+    specs: false,
   });
 
   const toggleMetaSection = (section: string) => {
     setMetaExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Remove a text variation (Ads Manager-style ✕ button): splice and keep array length
+  const removePrimaryText = (index: number) => {
+    setPrimaryTexts(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      next.push('');
+      return next;
+    });
+    setVisiblePrimaryTexts(v => Math.max(1, v - 1));
+  };
+
+  const removeMetaHeadline = (index: number) => {
+    setMetaHeadlines(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      next.push('');
+      return next;
+    });
+    setVisibleMetaHeadlines(v => Math.max(1, v - 1));
+  };
+
+  const setMediaAt = (index: number, url: string, kind: MediaKind) => {
+    setMetaMediaUrls(prev => {
+      const next = [...prev];
+      next[index] = url;
+      return next;
+    });
+    setMetaMediaKinds(prev => {
+      const next = [...prev];
+      next[index] = kind;
+      return next;
+    });
+    if (index === 0) setMetaImageUrl(url);
   };
 
   // UTM Builder State
@@ -388,7 +469,7 @@ export default function Home() {
 
   // Meta CTA Options (30+ options based on objective)
   const metaCtaOptions = [
-    'Learn More', 'Shop Now', 'Sign Up', 'Download', 'Contact Us',
+    'Learn More', 'See Details', 'Shop Now', 'Sign Up', 'Download', 'Contact Us',
     'Apply Now', 'Book Now', 'Buy Tickets', 'Call Now', 'Donate Now',
     'Get Offer', 'Get Directions', 'Get Quote', 'Get Showtimes', 'Install Now',
     'Listen Now', 'Order Now', 'Play Game', 'Request Time', 'See Menu',
@@ -480,13 +561,21 @@ export default function Home() {
     productReviewCount,
     productShipping,
     // Meta Ads
+    metaAdName,
+    partnershipAd,
     pageName,
     instagramAccount,
     pageImageUrl,
+    metaCreativeSource,
+    metaFormat,
+    multiAdvertiser,
+    browserAddon,
     primaryTexts,
     metaHeadlines,
     metaDescription,
-    metaMediaUrls,
+    // Blob URLs (videos) don't survive a reload — persist empty slots instead
+    metaMediaUrls: metaMediaUrls.map(u => (u.startsWith('blob:') ? '' : u)),
+    metaMediaKinds,
     metaCtaText,
     metaDestinationUrl,
     linkDisplay,
@@ -554,13 +643,28 @@ export default function Home() {
     if (data.productRating) setProductRating(data.productRating as string);
     if (data.productReviewCount) setProductReviewCount(data.productReviewCount as string);
     if (data.productShipping) setProductShipping(data.productShipping as string);
+    if (data.metaAdName) setMetaAdName(data.metaAdName as string);
+    if (data.partnershipAd !== undefined) setPartnershipAd(data.partnershipAd as boolean);
     if (data.pageName) setPageName(data.pageName as string);
     if (data.instagramAccount) setInstagramAccount(data.instagramAccount as string);
     if (data.pageImageUrl) setPageImageUrl(data.pageImageUrl as string);
+    if (data.metaCreativeSource) setMetaCreativeSource(data.metaCreativeSource as 'manual' | 'catalogue');
+    if (data.metaFormat) setMetaFormat(data.metaFormat as 'single' | 'carousel');
+    if (data.multiAdvertiser !== undefined) setMultiAdvertiser(data.multiAdvertiser as boolean);
+    if (data.browserAddon) setBrowserAddon(data.browserAddon as typeof browserAddon);
     if (data.primaryTexts) setPrimaryTexts(data.primaryTexts as string[]);
     if (data.metaHeadlines) setMetaHeadlines(data.metaHeadlines as string[]);
     if (data.metaDescription) setMetaDescription(data.metaDescription as string);
-    if (data.metaMediaUrls) setMetaMediaUrls(data.metaMediaUrls as string[]);
+    if (data.metaMediaUrls) {
+      // Older saves had 4 slots; blob: URLs from past sessions are dead — drop them
+      const urls = (data.metaMediaUrls as string[]).map(u => (u.startsWith('blob:') ? '' : u));
+      while (urls.length < 10) urls.push('');
+      setMetaMediaUrls(urls.slice(0, 10));
+    }
+    if (data.metaMediaKinds) {
+      const kinds = data.metaMediaKinds as MediaKind[];
+      setMetaMediaKinds([...kinds, ...Array(10).fill('image')].slice(0, 10) as MediaKind[]);
+    }
     if (data.metaCtaText) setMetaCtaText(data.metaCtaText as string);
     if (data.metaDestinationUrl) setMetaDestinationUrl(data.metaDestinationUrl as string);
     if (data.linkDisplay) setLinkDisplay(data.linkDisplay as string);
@@ -891,11 +995,15 @@ export default function Home() {
     const rows: string[][] = [];
 
     rows.push(['Category', 'Field', 'Value', 'Character Count', 'Limit']);
+    rows.push(['Settings', 'Ad Name', data.metaAdName, '', '']);
     rows.push(['Identity', 'Page Name', data.pageName, '', '']);
     rows.push(['Identity', 'Instagram Account', data.instagramAccount, '', '']);
+    rows.push(['Ad Setup', 'Format', data.metaFormat === 'carousel' ? 'Carousel' : 'Single image or video', '', '']);
+    rows.push(['Ad Setup', 'Media Added', String(data.metaMediaUrls.filter(Boolean).length), '', '10']);
     rows.push(['Settings', 'CTA Button', data.metaCtaText, '', '']);
     rows.push(['Settings', 'Destination URL', data.metaDestinationUrl, '', '']);
     rows.push(['Settings', 'Display Link', data.linkDisplay, '', '']);
+    rows.push(['Settings', 'Browser Add-on', data.browserAddon, '', '']);
 
     data.primaryTexts.forEach((t, i) => {
       if (t) rows.push(['Primary Text', `Primary Text ${i + 1}`, t, String(t.length), '125']);
@@ -1031,8 +1139,10 @@ export default function Home() {
   }, [businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
       sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
       promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
-      primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaCtaText,
+      primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaMediaKinds, metaCtaText,
       metaDestinationUrl, linkDisplay, platform, googleCampaignType, googleAdType, metaAdType,
+      metaAdName, partnershipAd, metaCreativeSource, metaFormat, multiAdvertiser, browserAddon,
+      advantagePlusCreative, textGeneration, optimizeTextPerPerson, lifecycleStrategy,
       productTitle, productPrice, productStore, productImageUrl, productRating,
       productReviewCount, productShipping]);
 
@@ -1912,112 +2022,73 @@ export default function Home() {
   };
 
   const renderMetaEditor = () => {
-    // Unified Meta Ads editor matching real Ads Manager interface (2026 update)
+    // Meta Ads editor mirroring the real Ads Manager ad-level flow:
+    // Ad name → Partnership ad → Identity → Ad setup → Destination → Ad creative
+    const spec = META_SPECS[metaAdType];
+    const mediaCount = metaMediaUrls.filter(u => u).length;
+    const mediaSlots = Math.min(10, Math.max(2, mediaCount + 2));
+
+    const chevron = (open: boolean) => (
+      <svg className={`w-5 h-5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+
+    const sectionHeader = (key: string, title: string, right?: React.ReactNode, badge?: React.ReactNode) => (
+      <button onClick={() => toggleMetaSection(key)} className="w-full flex items-center justify-between text-left">
+        <div className="flex items-center gap-2">
+          {chevron(!!metaExpandedSections[key])}
+          <span className="text-sm font-medium text-gray-900">{title}</span>
+          {badge}
+        </div>
+        {right}
+      </button>
+    );
+
     return (
       <div className="space-y-0 divide-y divide-gray-200">
-        {/* Advantage+ Creative Section (2026) */}
-        <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('advantagePlus')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.advantagePlus ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Advantage+ creative</span>
-              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">2026</span>
-            </div>
-            <span className={`text-xs px-2 py-0.5 rounded ${advantagePlusCreative ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {advantagePlusCreative ? 'On' : 'Off'}
-            </span>
-          </button>
-          {metaExpandedSections.advantagePlus && (
-            <div className="mt-4 pl-7 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                <p className="text-xs text-blue-800">
-                  Advantage+ creative uses AI to automatically optimize your ad creative for each person. Meta now defaults to Advantage+ setup for all new campaigns.
-                </p>
-              </div>
-
-              {/* Main Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-medium text-gray-900">Enable Advantage+ creative</span>
-                  <p className="text-xs text-gray-500">AI-driven creative optimizations</p>
-                </div>
-                <button
-                  onClick={() => setAdvantagePlusCreative(!advantagePlusCreative)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${advantagePlusCreative ? 'bg-blue-600' : 'bg-gray-300'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${advantagePlusCreative ? 'translate-x-5' : ''}`} />
-                </button>
-              </div>
-
-              {advantagePlusCreative && (
-                <>
-                  {/* Text Generation */}
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                    <div>
-                      <span className="text-sm text-gray-700">Text generation</span>
-                      <p className="text-xs text-gray-500">AI creates up to 5 versions of your text</p>
-                    </div>
-                    <button
-                      onClick={() => setTextGeneration(!textGeneration)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${textGeneration ? 'bg-blue-600' : 'bg-gray-300'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${textGeneration ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Optimize Text Per Person */}
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                    <div>
-                      <span className="text-sm text-gray-700">Optimize text per person</span>
-                      <p className="text-xs text-gray-500">Swap headline & primary text positions</p>
-                    </div>
-                    <button
-                      onClick={() => setOptimizeTextPerPerson(!optimizeTextPerPerson)}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${optimizeTextPerPerson ? 'bg-blue-600' : 'bg-gray-300'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${optimizeTextPerPerson ? 'translate-x-5' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Customer Lifecycle Strategy */}
-                  <div className="border-t border-gray-100 pt-3">
-                    <span className="text-sm text-gray-700">Customer lifecycle strategy</span>
-                    <p className="text-xs text-gray-500 mb-2">Choose who sees your ads</p>
-                    <select
-                      value={lifecycleStrategy}
-                      onChange={(e) => setLifecycleStrategy(e.target.value as 'all' | 'new-customers')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
-                    >
-                      <option value="all" className="text-gray-900">Get conversions from all audiences</option>
-                      <option value="new-customers" className="text-gray-900">Acquire new customers only</option>
-                    </select>
-                  </div>
-                </>
-              )}
+        {/* Ad name */}
+        <div className="pb-4">
+          {sectionHeader('adName', 'Ad name')}
+          {metaExpandedSections.adName && (
+            <div className="mt-3 pl-7">
+              <input
+                type="text"
+                value={metaAdName}
+                onChange={(e) => setMetaAdName(e.target.value)}
+                placeholder="e.g. Christchurch_thinking_about_selling"
+                maxLength={META_TEXT_LIMITS.adNameMax}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">Internal name — not shown to your audience</p>
             </div>
           )}
         </div>
 
-        {/* Ad Identity Section */}
+        {/* Partnership ad */}
         <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('identity')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.identity ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Identity</span>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-gray-900">Partnership ad</span>
+              <p className="text-xs text-gray-500 mt-0.5 max-w-xs">
+                Run ads with creators, brands and other businesses. These ads leverage signals from both profiles.
+              </p>
             </div>
-          </button>
+            <button
+              onClick={() => setPartnershipAd(!partnershipAd)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${partnershipAd ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${partnershipAd ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Identity */}
+        <div className="py-4">
+          {sectionHeader('identity', 'Identity')}
           {metaExpandedSections.identity && (
             <div className="mt-4 pl-7 space-y-4">
+              <p className="text-xs text-gray-500">The profiles that will be used in your ad.</p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {pageImageUrl ? (
@@ -2029,7 +2100,9 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Facebook Page</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Facebook Page <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={pageName}
@@ -2040,7 +2113,7 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram Account (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram profile</label>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-400">@</span>
                   <input
@@ -2051,9 +2124,10 @@ export default function Home() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">If empty, your Facebook Page name is used on Instagram placements</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Profile Image</label>
+                <label className="block text-sm text-gray-600 mb-2">Profile image</label>
                 <ImageUpload
                   label=""
                   value={pageImageUrl}
@@ -2065,38 +2139,178 @@ export default function Home() {
           )}
         </div>
 
-        {/* Media Section */}
+        {/* Ad setup */}
         <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('media')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.media ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Media</span>
+          {sectionHeader('adSetup', 'Ad setup')}
+          {metaExpandedSections.adSetup && (
+            <div className="mt-4 pl-7 space-y-5">
+              {/* Creative source */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Creative source</p>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={metaCreativeSource === 'manual'}
+                      onChange={() => setMetaCreativeSource('manual')}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="text-sm text-gray-900">Manual upload</span>
+                      <span className="block text-xs text-gray-500">Manually upload images or videos</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={metaCreativeSource === 'catalogue'}
+                      onChange={() => setMetaCreativeSource('catalogue')}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="text-sm text-gray-900">Advantage+ catalogue ads</span>
+                      <span className="block text-xs text-gray-500">Automatically show relevant product media from your catalogue</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Format */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Format</p>
+                <p className="text-xs text-gray-500 mb-2">Choose an ad creative layout.</p>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" checked={metaFormat === 'single'} onChange={() => setMetaFormat('single')} className="mt-0.5" />
+                    <span>
+                      <span className="text-sm text-gray-900">Single image or video</span>
+                      <span className="block text-xs text-gray-500">One image or video, or a slideshow with multiple images</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" checked={metaFormat === 'carousel'} onChange={() => setMetaFormat('carousel')} className="mt-0.5" />
+                    <span>
+                      <span className="text-sm text-gray-900">Carousel</span>
+                      <span className="block text-xs text-gray-500">{CAROUSEL_SPEC.cards} · {CAROUSEL_SPEC.recommendedResolution}</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Multi-advertiser ads */}
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={multiAdvertiser}
+                  onChange={(e) => setMultiAdvertiser(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="text-sm text-gray-900">Multi-advertiser ads</span>
+                  <span className="block text-xs text-gray-500">Your ad can appear with others in the same ad unit to help promote discoverability</span>
+                </span>
+              </label>
             </div>
-            <span className="text-xs text-gray-500">{metaMediaUrls.filter(u => u).length}/4 added</span>
-          </button>
+          )}
+        </div>
+
+        {/* Destination */}
+        <div className="py-4">
+          {sectionHeader('destination', 'Destination')}
+          {metaExpandedSections.destination && (
+            <div className="mt-4 pl-7 space-y-4">
+              <p className="text-xs text-gray-500">Tell us where to send people immediately after they tap or click your ad.</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Website URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={metaDestinationUrl}
+                  onChange={(e) => setMetaDestinationUrl(e.target.value)}
+                  placeholder="https://example.com/landing-page"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display link</label>
+                <input
+                  type="text"
+                  value={linkDisplay}
+                  onChange={(e) => setLinkDisplay(e.target.value)}
+                  placeholder="example.com"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-1">Shown instead of the full URL</p>
+              </div>
+
+              {/* Browser add-ons */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Browser add-ons</p>
+                <div className="space-y-2">
+                  {([
+                    { id: 'none', label: 'None', hint: "Don't add a button." },
+                    { id: 'call', label: 'Call', hint: 'Add a call button on your website.' },
+                    { id: 'messenger', label: 'Messenger', hint: 'Add a Messenger button on your website.' },
+                    { id: 'whatsapp', label: 'WhatsApp', hint: 'Add a WhatsApp button on your website.' },
+                    { id: 'instant-form', label: 'Instant form', hint: "Collect people's contact information." },
+                  ] as const).map((addon) => (
+                    <label key={addon.id} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={browserAddon === addon.id}
+                        onChange={() => setBrowserAddon(addon.id)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="text-sm text-gray-900">{addon.label}</span>
+                        <span className="block text-xs text-gray-500">{addon.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Ad creative — Media */}
+        <div className="py-4">
+          {sectionHeader(
+            'media',
+            'Media',
+            <span className={`text-xs px-2 py-0.5 rounded ${mediaCount ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-600'}`}>
+              {mediaCount} of 10 selected
+            </span>,
+            <span className="text-xs text-red-500">Required</span>
+          )}
           {metaExpandedSections.media && (
-            <div className="mt-4 pl-7">
-              <p className="text-xs text-gray-500 mb-3">
-                Add images or videos. Recommended: 1:1 for Feed, 9:16 for Stories/Reels
-              </p>
+            <div className="mt-4 pl-7 space-y-3">
+              {/* Placement spec callout — from Meta's current ads guide */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-1">
+                <p className="font-semibold">{spec.label} — recommended media</p>
+                <p>Image: {spec.image.recommendedResolution} · {spec.image.ratioLabel} · {spec.image.fileTypes.join('/')} · max {spec.image.maxFileMB} MB</p>
+                <p>
+                  Video: {spec.video.recommendedResolution} · {spec.video.fileTypes.join(' or ')} · max 4 GB
+                  {spec.video.maxDurationSec ? ` · up to ${spec.video.maxDurationSec >= 3600 ? `${Math.round(spec.video.maxDurationSec / 3600 * 10) / 10} h` : spec.video.maxDurationSec >= 90 ? `${Math.round(spec.video.maxDurationSec / 60)} min` : `${spec.video.maxDurationSec} s`}` : ''}
+                  {spec.video.sweetSpot ? ` · sweet spot ${spec.video.sweetSpot}` : ''}
+                </p>
+                {spec.safeZone && <p>Safe zone: {spec.safeZone}</p>}
+              </div>
+              {metaFormat === 'carousel' && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                  Carousel: {CAROUSEL_SPEC.cards}. {CAROUSEL_SPEC.ratioLabel}, {CAROUSEL_SPEC.recommendedResolution}. The first {Math.min(10, mediaCount) || 2} uploaded media become your cards.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                {metaMediaUrls.map((url, i) => (
-                  <ImageUpload
+                {metaMediaUrls.slice(0, mediaSlots).map((url, i) => (
+                  <MetaMediaUpload
                     key={i}
                     label={`Media ${i + 1}`}
                     value={url}
-                    onChange={(newUrl) => {
-                      const newUrls = [...metaMediaUrls];
-                      newUrls[i] = newUrl;
-                      setMetaMediaUrls(newUrls);
-                      if (i === 0) setMetaImageUrl(newUrl);
-                    }}
-                    aspectRatio={metaAdType.includes('stories') || metaAdType.includes('reels') ? '9:16' : '1:1'}
+                    kind={metaMediaKinds[i]}
+                    placement={metaAdType}
+                    onChange={(newUrl, kind) => setMediaAt(i, newUrl, kind)}
                   />
                 ))}
               </div>
@@ -2104,32 +2318,18 @@ export default function Home() {
           )}
         </div>
 
-        {/* Primary Text Section */}
+        {/* Primary text */}
         <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('primaryText')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.primaryText ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Primary text</span>
-            </div>
-            <span className="text-xs text-gray-500">{primaryTexts.filter(t => t.trim()).length}/5 added</span>
-          </button>
+          {sectionHeader('primaryText', 'Primary text', <span className="text-xs text-gray-500">{primaryTexts.filter(t => t.trim()).length}/5 added</span>)}
           {metaExpandedSections.primaryText && (
             <div className="mt-4 pl-7 space-y-3">
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>125 characters visible before "See more" (2,200 max). Reels: 40-72 chars.</p>
-                {textGeneration && (
-                  <p className="text-blue-600">AI will generate up to 5 additional text variations.</p>
-                )}
-              </div>
+              <p className="text-xs text-gray-500">
+                {META_TEXT_LIMITS.primaryVisible} characters visible before &ldquo;See more&rdquo; ({META_TEXT_LIMITS.primaryMax.toLocaleString()} max). Reels: 72 visible.
+                {textGeneration && <span className="text-blue-600"> AI will generate additional variations.</span>}
+              </p>
               {primaryTexts.slice(0, visiblePrimaryTexts).map((text, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex items-start gap-2">
-                    <span className="text-sm text-gray-400 w-5 pt-2">{i + 1}</span>
                     <textarea
                       value={text}
                       onChange={(e) => {
@@ -2140,15 +2340,28 @@ export default function Home() {
                       }}
                       placeholder={`Primary text ${i + 1}${i === 0 ? ' *' : ''}`}
                       rows={3}
+                      maxLength={META_TEXT_LIMITS.primaryMax}
                       className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
                         i === 0 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
-                      } ${text.length > 125 ? 'border-red-300 bg-red-50' : text.length > 100 ? 'border-yellow-300 bg-yellow-50' : ''}`}
+                      } ${text.length > META_TEXT_LIMITS.primaryVisible ? 'border-yellow-300 bg-yellow-50' : ''}`}
                     />
+                    {visiblePrimaryTexts > 1 && (
+                      <button
+                        onClick={() => removePrimaryText(i)}
+                        className="text-gray-400 hover:text-gray-600 mt-2"
+                        title="Remove this text option"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   <div className={`text-right text-xs pr-1 font-medium ${
-                    text.length > 125 ? 'text-red-500' : text.length > 100 ? 'text-yellow-500' : text.length > 50 ? 'text-green-500' : 'text-gray-400'
+                    text.length > META_TEXT_LIMITS.primaryVisible ? 'text-yellow-600' : text.length > 50 ? 'text-green-500' : 'text-gray-400'
                   }`}>
-                    {text.length}/125 characters {text.length > 125 && <span className="text-red-500">(will be truncated)</span>}
+                    {text.length}/{META_TEXT_LIMITS.primaryVisible} visible
+                    {text.length > META_TEXT_LIMITS.primaryVisible && <span> — truncated with &ldquo;See more&rdquo;</span>}
                   </div>
                 </div>
               ))}
@@ -2160,38 +2373,24 @@ export default function Home() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add another primary text option
+                  Add text option
                 </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Headlines Section */}
+        {/* Headline */}
         <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('headlines')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.headlines ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Headlines</span>
-            </div>
-            <span className="text-xs text-gray-500">{metaHeadlines.filter(h => h.trim()).length}/5 added</span>
-          </button>
+          {sectionHeader('headlines', 'Headline', <span className="text-xs text-gray-500">{metaHeadlines.filter(h => h.trim()).length}/5 added</span>)}
           {metaExpandedSections.headlines && (
             <div className="mt-4 pl-7 space-y-3">
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>40 characters recommended (255 max). Reels overlay: 10 chars visible.</p>
-                {optimizeTextPerPerson && (
-                  <p className="text-blue-600">Headlines may swap with primary text based on user.</p>
-                )}
-              </div>
+              <p className="text-xs text-gray-500">
+                ~27 characters visible in Feed, {META_TEXT_LIMITS.headlineRecommended} recommended ({META_TEXT_LIMITS.headlineMax} max).
+                {optimizeTextPerPerson && <span className="text-blue-600"> May swap with primary text per person.</span>}
+              </p>
               {metaHeadlines.slice(0, visibleMetaHeadlines).map((h, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400 w-5">{i + 1}</span>
                   <input
                     type="text"
                     value={h}
@@ -2201,15 +2400,26 @@ export default function Home() {
                       setMetaHeadlines(newHeadlines);
                       if (i === 0) setHeadline(e.target.value);
                     }}
-                    placeholder={`Headline ${i + 1}`}
-                    maxLength={40}
-                    className={`flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
-                      h.length >= 40 ? 'border-red-300 bg-red-50' : h.length >= 35 ? 'border-yellow-300 bg-yellow-50' : ''
-                    }`}
+                    placeholder={`Headline ${i + 1}${i === 0 ? ' *' : ''}`}
+                    maxLength={META_TEXT_LIMITS.headlineMax}
+                    className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                      i === 0 ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                    } ${h.length > META_TEXT_LIMITS.headlineRecommended ? 'border-yellow-300 bg-yellow-50' : ''}`}
                   />
-                  <span className={`text-xs w-10 text-right font-medium ${
-                    h.length >= 40 ? 'text-red-500' : h.length >= 35 ? 'text-yellow-500' : h.length >= 20 ? 'text-green-500' : 'text-gray-400'
-                  }`}>{h.length}/40</span>
+                  <span className={`text-xs w-12 text-right font-medium ${
+                    h.length > META_TEXT_LIMITS.headlineRecommended ? 'text-yellow-600' : h.length >= 20 ? 'text-green-500' : 'text-gray-400'
+                  }`}>{h.length}/{META_TEXT_LIMITS.headlineRecommended}</span>
+                  {visibleMetaHeadlines > 1 && (
+                    <button
+                      onClick={() => removeMetaHeadline(i)}
+                      className="text-gray-400 hover:text-gray-600"
+                      title="Remove this headline"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
               {visibleMetaHeadlines < 5 && (
@@ -2220,30 +2430,19 @@ export default function Home() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add another headline option
+                  Add headline option
                 </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Description Section */}
+        {/* Description */}
         <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('description')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.description ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Description</span>
-              <span className="text-xs text-gray-400">(optional)</span>
-            </div>
-          </button>
+          {sectionHeader('description', 'Description', undefined, <span className="text-xs text-gray-400">(optional)</span>)}
           {metaExpandedSections.description && (
             <div className="mt-4 pl-7">
-              <p className="text-xs text-gray-500 mb-2">25-30 characters. Only shown on some placements (Marketplace, Search).</p>
+              <p className="text-xs text-gray-500 mb-2">~{META_TEXT_LIMITS.descriptionVisible} characters visible. Only shown on some placements (Feed link band, Marketplace, Search).</p>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -2253,70 +2452,95 @@ export default function Home() {
                     setDescription(e.target.value);
                   }}
                   placeholder="Link description"
-                  maxLength={30}
+                  maxLength={META_TEXT_LIMITS.descriptionVisible}
                   className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                 />
-                <span className="text-xs text-gray-400 w-10 text-right">{metaDescription.length}/30</span>
+                <span className="text-xs text-gray-400 w-10 text-right">{metaDescription.length}/{META_TEXT_LIMITS.descriptionVisible}</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Destination Section */}
-        <div className="py-4">
-          <button
-            onClick={() => toggleMetaSection('destination')}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-2">
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${metaExpandedSections.destination ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-sm font-medium text-gray-900">Destination</span>
+        {/* Optimise text per person + CTA */}
+        <div className="py-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium text-gray-900">Optimise text per person</span>
+              <p className="text-xs text-gray-500">Swap primary text, headline and description positions when it&apos;s likely to improve performance</p>
             </div>
-          </button>
-          {metaExpandedSections.destination && (
+            <button
+              onClick={() => setOptimizeTextPerPerson(!optimizeTextPerPerson)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${optimizeTextPerPerson ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${optimizeTextPerPerson ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Call to action</label>
+            <select
+              value={metaCtaText}
+              onChange={(e) => setMetaCtaText(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+            >
+              {metaCtaOptions.map((cta) => (
+                <option key={cta} value={cta} className="text-gray-900">{cta}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Advantage+ creative enhancements */}
+        <div className="py-4">
+          {sectionHeader(
+            'advantagePlus',
+            'Advantage+ creative enhancements',
+            <span className={`text-xs px-2 py-0.5 rounded ${advantagePlusCreative ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {[advantagePlusCreative, textGeneration, optimizeTextPerPerson].filter(Boolean).length}/3 on
+            </span>
+          )}
+          {metaExpandedSections.advantagePlus && (
             <div className="mt-4 pl-7 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
-                <input
-                  type="url"
-                  value={metaDestinationUrl}
-                  onChange={(e) => setMetaDestinationUrl(e.target.value)}
-                  placeholder="https://example.com/landing-page"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-gray-700">Advantage+ creative</span>
+                  <p className="text-xs text-gray-500">AI-driven optimisations: relevant comments, enhance CTA, visual touch-ups</p>
+                </div>
+                <button
+                  onClick={() => setAdvantagePlusCreative(!advantagePlusCreative)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${advantagePlusCreative ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${advantagePlusCreative ? 'translate-x-5' : ''}`} />
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Display link (optional)</label>
-                <input
-                  type="text"
-                  value={linkDisplay}
-                  onChange={(e) => setLinkDisplay(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                />
-                <p className="text-xs text-gray-400 mt-1">Shown instead of the full URL</p>
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                <div>
+                  <span className="text-sm text-gray-700">Text generation</span>
+                  <p className="text-xs text-gray-500">AI creates up to 5 versions of your text</p>
+                </div>
+                <button
+                  onClick={() => setTextGeneration(!textGeneration)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${textGeneration ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${textGeneration ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+              <div className="border-t border-gray-100 pt-3">
+                <span className="text-sm text-gray-700">Customer lifecycle strategy</span>
+                <p className="text-xs text-gray-500 mb-2">Choose who sees your ads</p>
+                <select
+                  value={lifecycleStrategy}
+                  onChange={(e) => setLifecycleStrategy(e.target.value as 'all' | 'new-customers')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
+                >
+                  <option value="all" className="text-gray-900">Get conversions from all audiences</option>
+                  <option value="new-customers" className="text-gray-900">Acquire new customers only</option>
+                </select>
               </div>
             </div>
           )}
         </div>
 
-        {/* Call to Action */}
-        <div className="py-4">
-          <label className="block text-sm font-medium text-gray-900 mb-2">Call to action</label>
-          <select
-            value={metaCtaText}
-            onChange={(e) => setMetaCtaText(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
-          >
-            {metaCtaOptions.map((cta) => (
-              <option key={cta} value={cta} className="text-gray-900">{cta}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Placement-specific note */}
+        {/* Placement note for the current preview */}
         <div className="py-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
@@ -2324,22 +2548,47 @@ export default function Home() {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
               </svg>
               <div className="text-sm text-blue-800">
-                <p className="font-medium">Previewing: {metaAdType === 'fb-feed' ? 'Facebook Feed' : metaAdType === 'fb-stories' ? 'Facebook Stories' : metaAdType === 'ig-feed' ? 'Instagram Feed' : metaAdType === 'ig-stories' ? 'Instagram Stories' : 'Instagram Reels'}</p>
-                <p className="text-xs text-blue-600 mt-1">
-                  {metaAdType.includes('feed') ? 'Primary text above image (125 chars visible). Headline & description below.' : metaAdType.includes('reels') ? 'Reels: Primary text 40-72 chars, overlay headline 10 chars visible.' : 'Stories: Only headline visible. Primary text not displayed.'}
-                </p>
+                <p className="font-medium">Previewing: {spec.label}</p>
+                <p className="text-xs text-blue-600 mt-1">{spec.textNotes}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 2026 Platform Updates Note */}
+        {/* Full media spec sheet (all placements) */}
         <div className="py-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-xs text-gray-600">
-              <span className="font-medium">2026 Updates:</span> Threads ads now available globally • Reels post-view ads after 60s videos • New "Interactions" metric replaces "Engagement" • Click attribution excludes likes/shares
-            </p>
-          </div>
+          {sectionHeader('specs', 'Meta media specs (2026)', undefined, <span className="text-xs text-gray-400">reference</span>)}
+          {metaExpandedSections.specs && (
+            <div className="mt-4 pl-7 overflow-x-auto">
+              <table className="w-full text-xs border border-gray-200 rounded">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-600">
+                    <th className="text-left px-2 py-1.5 font-medium">Placement</th>
+                    <th className="text-left px-2 py-1.5 font-medium">Ratio</th>
+                    <th className="text-left px-2 py-1.5 font-medium">Resolution</th>
+                    <th className="text-left px-2 py-1.5 font-medium">Video max</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-700">
+                  {(Object.keys(META_SPECS) as (keyof typeof META_SPECS)[]).map((key) => {
+                    const s = META_SPECS[key];
+                    const dur = s.video.maxDurationSec || 0;
+                    return (
+                      <tr key={key} className={key === metaAdType ? 'bg-blue-50/60' : ''}>
+                        <td className="px-2 py-1.5">{s.label}</td>
+                        <td className="px-2 py-1.5">{s.video.ratios.length > 1 ? '4:5 / 1:1' : key.includes('feed') ? '4:5' : '9:16'}</td>
+                        <td className="px-2 py-1.5">{s.image.recommendedResolution.replace(/ \(.*\)/, '')}</td>
+                        <td className="px-2 py-1.5">{dur >= 3600 ? `${Math.round(dur / 3600 * 10) / 10} h` : dur >= 90 ? `${Math.round(dur / 60)} min` : `${dur} s`}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="text-[11px] text-gray-400 mt-2">
+                Images: JPG/PNG, max 30 MB. Video: MP4/MOV (H.264, AAC 128 kbps+), max 4 GB. Keep the short edge at 1080 px or above — lower resolution is silently deprioritised. Since March 2026, all Stories/Reels share one 9:16 safe zone (top 14%, bottom 35%, sides 6%).
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -3001,21 +3250,78 @@ export default function Home() {
     const displayCaption = primaryTexts[0] || primaryText || caption;
     // Use first headline
     const displayHeadline = metaHeadlines[0] || headline;
-    // Use first media URL
-    const displayImageUrl = metaMediaUrls[0] || metaImageUrl;
+    // Placement customisation (like Meta's): among the uploaded media, pick the
+    // one whose aspect ratio best fits this placement — 9:16 media serves
+    // Stories/Reels, 4:5 / 1:1 media serves Feed.
+    const isVertical = metaAdType === 'fb-stories' || metaAdType === 'ig-stories' || metaAdType === 'ig-reels';
+    const targetRatio = isVertical ? 9 / 16 : 4 / 5;
+    const filledMedia = metaMediaUrls.map((url, i) => ({ url, i })).filter(m => m.url);
+    let bestMediaIndex = filledMedia.length ? filledMedia[0].i : -1;
+    let bestScore = Infinity;
+    filledMedia.forEach(({ i }) => {
+      const r = metaMediaRatios[i];
+      // Unknown ratios rank last; otherwise distance in log-space (symmetric for crops)
+      const score = r === null ? 999 : Math.abs(Math.log(r / targetRatio));
+      if (score < bestScore - 1e-9) {
+        bestScore = score;
+        bestMediaIndex = i;
+      }
+    });
+    const displayImageUrl = bestMediaIndex >= 0 ? metaMediaUrls[bestMediaIndex] : metaImageUrl;
+    const displayMediaKind: MediaKind = bestMediaIndex >= 0
+      ? metaMediaKinds[bestMediaIndex]
+      : looksLikeVideoUrl(displayImageUrl) ? 'video' : 'image';
+    // Carousel cards: all filled media, in order
+    const carouselCards = metaFormat === 'carousel'
+      ? metaMediaUrls
+          .map((url, i) => ({ url, kind: metaMediaKinds[i] }))
+          .filter(card => card.url)
+      : undefined;
 
-    switch (metaAdType) {
-      case 'fb-feed':
-        return <MetaFeedAd pageName={pageName} primaryText={primaryTexts[0] || primaryText} headline={displayHeadline} description={metaDescription || description} imageUrl={displayImageUrl} ctaText={metaCtaText} linkDisplay={linkDisplay} pageImageUrl={pageImageUrl} />;
-      case 'fb-stories':
-        return <FacebookStoriesAd pageName={pageName} pageImageUrl={pageImageUrl} imageUrl={displayImageUrl} headline={displayHeadline} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
-      case 'ig-feed':
-        return <InstagramFeedAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} ctaText={metaCtaText} website={linkDisplay} profileImageUrl={pageImageUrl} />;
-      case 'ig-stories':
-        return <InstagramStoryAd username={displayUsername} imageUrl={displayImageUrl} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
-      case 'ig-reels':
-        return <InstagramReelsAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
-    }
+    const placement = (() => {
+      switch (metaAdType) {
+        case 'fb-feed':
+          return <MetaFeedAd pageName={pageName} primaryText={primaryTexts[0] || primaryText} headline={displayHeadline} description={metaDescription || description} imageUrl={displayImageUrl} mediaKind={displayMediaKind} carouselCards={carouselCards} ctaText={metaCtaText} linkDisplay={linkDisplay} pageImageUrl={pageImageUrl} />;
+        case 'fb-stories':
+          return <FacebookStoriesAd pageName={pageName} pageImageUrl={pageImageUrl} imageUrl={displayImageUrl} mediaKind={displayMediaKind} headline={displayHeadline} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
+        case 'ig-feed':
+          return <InstagramFeedAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} mediaKind={displayMediaKind} ctaText={metaCtaText} website={linkDisplay} profileImageUrl={pageImageUrl} />;
+        case 'ig-stories':
+          return <InstagramStoryAd username={displayUsername} imageUrl={displayImageUrl} mediaKind={displayMediaKind} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
+        case 'ig-reels':
+          return <InstagramReelsAd username={displayUsername} caption={displayCaption} imageUrl={displayImageUrl} mediaKind={displayMediaKind} ctaText={metaCtaText} profileImageUrl={pageImageUrl} />;
+      }
+    })();
+
+    const spec = META_SPECS[metaAdType];
+    const activeSpec = displayMediaKind === 'video' ? spec.video : spec.image;
+
+    // Ads Manager-style preview chrome around the placement mockup
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-800">Ad preview</span>
+            <span className="text-xs text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-0.5">{spec.label}</span>
+          </div>
+          <span className="text-[11px] text-gray-400">{metaFormat === 'carousel' ? 'Carousel' : 'Single image or video'}</span>
+        </div>
+        <div className="flex justify-center">{placement}</div>
+        <div className="mt-3 space-y-1 text-center">
+          {filledMedia.length > 1 && bestMediaIndex >= 0 && (
+            <p className="text-[11px] text-blue-600">
+              Showing Media {bestMediaIndex + 1} — best aspect-ratio fit for {spec.label} (placement customisation)
+            </p>
+          )}
+          <p className="text-[11px] text-gray-500">
+            Recommended: {activeSpec.recommendedResolution} · {activeSpec.ratioLabel}
+          </p>
+          <p className="text-[10px] text-gray-400">
+            Ad rendering and interaction may vary based on device, format and other factors.
+          </p>
+        </div>
+      </div>
+    );
   };
 
   return (

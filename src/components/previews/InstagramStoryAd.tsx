@@ -1,9 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
 interface InstagramStoryAdProps {
   username: string;
   profileImageUrl?: string;
   imageUrl?: string;
+  mediaKind?: 'image' | 'video';
   ctaText?: string;
 }
 
@@ -11,6 +14,7 @@ export default function InstagramStoryAd({
   username,
   profileImageUrl,
   imageUrl,
+  mediaKind,
   ctaText = 'Learn More',
 }: InstagramStoryAdProps) {
   return (
@@ -18,7 +22,7 @@ export default function InstagramStoryAd({
       {/* Background Image */}
       <div className="absolute inset-0">
         {imageUrl ? (
-          <img src={imageUrl} alt="Story" className="w-full h-full object-cover" />
+          <AdMedia url={imageUrl} kind={mediaKind} alt="Story" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center">
             <svg className="w-20 h-20 text-white/30" fill="currentColor" viewBox="0 0 24 24">

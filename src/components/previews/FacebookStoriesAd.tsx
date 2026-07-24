@@ -1,9 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
 interface FacebookStoriesAdProps {
   pageName: string;
   pageImageUrl?: string;
   imageUrl?: string;
+  mediaKind?: 'image' | 'video';
   headline?: string;
   ctaText?: string;
   linkDisplay?: string;
@@ -13,6 +16,7 @@ export default function FacebookStoriesAd({
   pageName,
   pageImageUrl,
   imageUrl,
+  mediaKind,
   headline,
   ctaText = 'Learn More',
   linkDisplay = 'example.com',
@@ -22,7 +26,7 @@ export default function FacebookStoriesAd({
       {/* Background */}
       <div className="absolute inset-0">
         {imageUrl ? (
-          <img src={imageUrl} alt="Story" className="w-full h-full object-cover" />
+          <AdMedia url={imageUrl} kind={mediaKind} alt="Story" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 flex items-center justify-center">
             <svg className="w-20 h-20 text-white/30" fill="currentColor" viewBox="0 0 24 24">

@@ -1,9 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
 interface InstagramReelsAdProps {
   username: string;
   profileImageUrl?: string;
   imageUrl?: string;
+  mediaKind?: 'image' | 'video';
   caption: string;
   ctaText?: string;
   musicName?: string;
@@ -13,6 +16,7 @@ export default function InstagramReelsAd({
   username,
   profileImageUrl,
   imageUrl,
+  mediaKind,
   caption,
   ctaText = 'Shop Now',
   musicName = 'Original Audio',
@@ -22,7 +26,7 @@ export default function InstagramReelsAd({
       {/* Background */}
       <div className="absolute inset-0">
         {imageUrl ? (
-          <img src={imageUrl} alt="Reel" className="w-full h-full object-cover" />
+          <AdMedia url={imageUrl} kind={mediaKind} alt="Reel" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-500 via-purple-600 to-blue-600 flex items-center justify-center">
             <svg className="w-20 h-20 text-white/30" fill="currentColor" viewBox="0 0 24 24">

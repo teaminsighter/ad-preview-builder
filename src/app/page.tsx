@@ -448,6 +448,37 @@ export default function Home() {
     if (index === 0) setMetaImageUrl(url);
   };
 
+  // Competitor watchlist (Ad Library tab) — persisted separately
+  const [competitors, setCompetitors] = useState<{ name: string; domain: string }[]>([]);
+  const [compName, setCompName] = useState('');
+  const [compDomain, setCompDomain] = useState('');
+  const [adLibCountry, setAdLibCountry] = useState('NZ');
+  const [adLibQuery, setAdLibQuery] = useState('');
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('competitorWatchlist') || 'null');
+      if (saved?.competitors) setCompetitors(saved.competitors);
+      if (saved?.country) setAdLibCountry(saved.country);
+    } catch { /* ignore corrupt store */ }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('competitorWatchlist', JSON.stringify({ competitors, country: adLibCountry }));
+  }, [competitors, adLibCountry]);
+
+  // Deep links into each platform's ad transparency library, pre-filled.
+  // These tools block embedding and scraping, so opening a prepared search
+  // in a new tab is the reliable ToS-safe integration for a static site.
+  const adLibraryDeepLinks = (term: string, domain: string, country: string) => ({
+    meta: `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${encodeURIComponent(country === 'ALL' ? 'ALL' : country)}&q=${encodeURIComponent(term)}&search_type=keyword_unordered&media_type=all`,
+    google: domain
+      ? `https://adstransparency.google.com/?region=${encodeURIComponent(country === 'ALL' ? 'anywhere' : country)}&domain=${encodeURIComponent(domain)}`
+      : `https://adstransparency.google.com/?region=${encodeURIComponent(country === 'ALL' ? 'anywhere' : country)}`,
+    tiktok: `https://library.tiktok.com/ads?region=all&adv_name=${encodeURIComponent(term)}&query_type=1&sort_type=last_shown_date,desc`,
+    microsoft: 'https://adlibrary.ads.microsoft.com/',
+  });
+
   // UTM Builder State
   const [utmBaseUrl, setUtmBaseUrl] = useState('');
   const [utmSource, setUtmSource] = useState('');
@@ -4114,8 +4145,122 @@ export default function Home() {
           /* Ad Library - Full Width */
           <div>
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Ad Library Resources</h2>
-              <p className="text-sm text-white/80 mt-2">Browse competitor ads and find creative inspiration across all major platforms</p>
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Competitor Ads</h2>
+              <p className="text-sm text-white/80 mt-2">Track competitors across every ad transparency library — one click opens their live ads</p>
+            </div>
+
+            {/* Quick search across all libraries */}
+            <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  value={adLibQuery}
+                  onChange={(e) => setAdLibQuery(e.target.value)}
+                  placeholder="Search a brand, competitor or keyword…"
+                  className="flex-1 min-w-[220px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+                />
+                <select
+                  value={adLibCountry}
+                  onChange={(e) => setAdLibCountry(e.target.value)}
+                  className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white"
+                  title="Country filter (used by Meta & Google)"
+                >
+                  {['NZ', 'AU', 'US', 'GB', 'CA', 'IE', 'ALL'].map(c => (
+                    <option key={c} value={c}>{c === 'ALL' ? 'All countries' : c}</option>
+                  ))}
+                </select>
+                {(() => {
+                  const links = adLibraryDeepLinks(adLibQuery, '', adLibCountry);
+                  const disabled = !adLibQuery.trim();
+                  const btn = 'px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 whitespace-nowrap';
+                  return (
+                    <>
+                      <a href={disabled ? undefined : links.meta} target="_blank" rel="noopener noreferrer"
+                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-[#1877F2] text-white hover:shadow-lg'}`}>
+                        Meta Ad Library
+                      </a>
+                      <a href={disabled ? undefined : links.google} target="_blank" rel="noopener noreferrer"
+                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-white text-gray-800 border border-gray-300 hover:shadow-lg'}`}>
+                        Google Transparency
+                      </a>
+                      <a href={disabled ? undefined : links.tiktok} target="_blank" rel="noopener noreferrer"
+                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-black text-white hover:shadow-lg'}`}>
+                        TikTok Library
+                      </a>
+                    </>
+                  );
+                })()}
+              </div>
+              <p className="text-xs text-white/70 mt-3">
+                Tip: for Google, add competitors below with their domain — the Transparency Center finds advertisers by website. TikTok&rsquo;s library fully covers EU ads; use Creative Center (below) for top-performing ads elsewhere.
+              </p>
+            </div>
+
+            {/* Competitor watchlist */}
+            <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-10">
+              <h3 className="text-lg font-bold gradient-text mb-4">Competitor watchlist</h3>
+              <div className="flex flex-wrap gap-3 mb-5">
+                <input
+                  type="text"
+                  value={compName}
+                  onChange={(e) => setCompName(e.target.value)}
+                  placeholder="Competitor / brand name"
+                  className="flex-1 min-w-[180px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+                />
+                <input
+                  type="text"
+                  value={compDomain}
+                  onChange={(e) => setCompDomain(e.target.value)}
+                  placeholder="Website (for Google), e.g. competitor.co.nz"
+                  className="flex-1 min-w-[220px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+                />
+                <button
+                  onClick={() => {
+                    if (!compName.trim()) return;
+                    setCompetitors(prev => [...prev, { name: compName.trim(), domain: compDomain.trim().replace(/^https?:\/\//, '').split('/')[0] }]);
+                    setCompName('');
+                    setCompDomain('');
+                  }}
+                  className="px-5 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  + Add
+                </button>
+              </div>
+              {competitors.length === 0 ? (
+                <p className="text-sm text-gray-500">No competitors saved yet — add the brands you want to monitor. The list stays in your browser.</p>
+              ) : (
+                <div className="space-y-2">
+                  {competitors.map((comp, i) => {
+                    const links = adLibraryDeepLinks(comp.name, comp.domain, adLibCountry);
+                    const chip = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap';
+                    return (
+                      <div key={i} className="flex flex-wrap items-center gap-2 bg-white/80 rounded-xl px-4 py-3 border border-gray-100">
+                        <div className="flex-1 min-w-[140px]">
+                          <p className="text-sm font-semibold text-gray-900">{comp.name}</p>
+                          {comp.domain && <p className="text-xs text-gray-500">{comp.domain}</p>}
+                        </div>
+                        <a href={links.meta} target="_blank" rel="noopener noreferrer" className={`${chip} bg-[#1877F2] text-white hover:shadow-md`}>Meta</a>
+                        <a href={links.google} target="_blank" rel="noopener noreferrer" className={`${chip} bg-gray-800 text-white hover:shadow-md`} title={comp.domain ? `Searches ${comp.domain}` : 'Add a domain for a pre-filled Google search'}>Google{!comp.domain && ' *'}</a>
+                        <a href={links.tiktok} target="_blank" rel="noopener noreferrer" className={`${chip} bg-black text-white hover:shadow-md`}>TikTok</a>
+                        <a href={links.microsoft} target="_blank" rel="noopener noreferrer" className={`${chip} bg-[#00A4EF] text-white hover:shadow-md`}>Microsoft</a>
+                        <button
+                          onClick={() => setCompetitors(prev => prev.filter((_, j) => j !== i))}
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Remove"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-8 text-center">
+              <h2 className="text-xl font-bold text-white drop-shadow-lg inline-block">All Ad Libraries &amp; Research Tools</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 card-grid">
               {renderAdLibrary()}

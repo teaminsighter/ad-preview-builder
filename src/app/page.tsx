@@ -4165,15 +4165,20 @@ export default function Home() {
                 {libProvider === 'meta' ? (
                   <div className="text-sm text-gray-700 space-y-4">
                     <div>
-                      <p className="font-semibold mb-1">Easiest — one key powers Meta AND Google (100 free searches)</p>
+                      <p className="font-semibold mb-1">🆓 Free forever — Apify (~6,600 ads/month, renews monthly)</p>
                       <ol className="space-y-1 list-decimal ml-5">
-                        <li>Sign up at <a href="https://www.searchapi.io" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">searchapi.io</a> (email only — no ID verification, no card) and copy your API key.</li>
-                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SEARCHAPI_KEY</code> → save &amp; redeploy.</li>
-                        <li>Coverage: all countries, all ad types, with creative images. 100 free searches, then from US$40/mo.</li>
+                        <li>Sign up free at <a href="https://apify.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">apify.com</a> (email only — no card, no ID). The free plan includes $5 credits every month.</li>
+                        <li>Copy your token from Apify Console → Settings → API &amp; Integrations.</li>
+                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">APIFY_TOKEN</code> → save &amp; redeploy.</li>
+                        <li>Coverage: all countries, all ad types, with images. Note: each search runs a live scrape — results take ~30–90 seconds.</li>
                       </ol>
                     </div>
                     <div>
-                      <p className="font-semibold mb-1">Free forever — official Meta API (needs the owner)</p>
+                      <p className="font-semibold mb-1">Faster option — SearchAPI.io (100 free searches, one key also powers Google)</p>
+                      <p className="ml-1">Add <code className="bg-gray-100 px-1 rounded">SEARCHAPI_KEY</code> from <a href="https://www.searchapi.io" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">searchapi.io</a> — instant results, but paid after the first 100 searches (US$40/mo).</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Official Meta API (free, needs the owner)</p>
                       <p className="ml-1">The account owner completes identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a>, then adds a long-lived token as <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code>. Coverage: UK/EU ads + political ads only.</p>
                     </div>
                   </div>

@@ -1,13 +1,16 @@
 // Cloudflare Pages Function — Meta Ad Library search, multi-provider.
 // First configured provider wins:
 //
-//   1. SEARCHAPI_KEY       — searchapi.io (easiest: ONE key also powers the
-//                            Google endpoint; full country coverage, no Meta
-//                            identity verification; 100 free searches to start)
-//   2. SCRAPECREATORS_API_KEY — scrapecreators.com (full coverage, paid)
-//   3. META_ACCESS_TOKEN   — official Graph ads_archive (free, but requires
-//                            the account owner's identity verification and
-//                            only covers political ads + UK/EU-delivered ads)
+//   1. APIFY_TOKEN         — apify.com FREE plan: $5 credits renew monthly,
+//                            actor costs $0.75/1,000 ads ≈ 6,600 ads/month
+//                            free. All countries, no identity verification.
+//                            Searches take ~30-90s (a live scrape runs).
+//   2. SEARCHAPI_KEY       — searchapi.io (fast; ONE key also powers the
+//                            Google endpoint; 100 free searches, then paid)
+//   3. SCRAPECREATORS_API_KEY — scrapecreators.com (full coverage, paid)
+//   4. META_ACCESS_TOKEN   — official Graph ads_archive (free forever, but
+//                            requires the account owner's identity
+//                            verification; political + UK/EU ads only)
 //
 // Env vars: Cloudflare dashboard → Workers & Pages → project → Settings →
 // Environment variables → add → redeploy.
@@ -25,34 +28,38 @@ const toIso = (d) => {
   return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 };
 
-// Normalise a ScrapeCreators/SearchAPI-style ad (ad_archive_id + snapshot)
+// Normalise an Ad Library-shaped ad (ad_archive_id + snapshot), covering the
+// snake_case and camelCase variants used by Apify/ScrapeCreators/SearchAPI
 const mapArchiveAd = (a) => {
   const snap = a.snapshot || {};
-  const body = typeof snap.body === 'string' ? snap.body : (snap.body && snap.body.text) || '';
+  const card = (Array.isArray(snap.cards) && snap.cards[0]) || {};
+  const body =
+    (typeof snap.body === 'string' ? snap.body : snap.body && snap.body.text) ||
+    (typeof card.body === 'string' ? card.body : card.body && card.body.text) ||
+    '';
   const img = (Array.isArray(snap.images) && snap.images[0]) || {};
   const video = (Array.isArray(snap.videos) && snap.videos[0]) || {};
-  const platforms = Array.isArray(a.publisher_platform)
-    ? a.publisher_platform
-    : a.publisher_platform
-    ? [a.publisher_platform]
-    : Array.isArray(a.publisher_platforms)
-    ? a.publisher_platforms
-    : [];
+  const rawPlatforms =
+    a.publisher_platform ?? a.publisherPlatform ?? a.publisher_platforms ?? [];
+  const platforms = Array.isArray(rawPlatforms) ? rawPlatforms : [rawPlatforms];
+  const archiveId = a.ad_archive_id || a.adArchiveID || a.adArchiveId || a.id;
   return {
-    id: String(a.ad_archive_id || a.id || ''),
-    page_name: a.page_name,
+    id: String(archiveId || ''),
+    page_name: a.page_name || a.pageName,
     ad_creative_bodies: body ? [body] : [],
-    ad_creative_link_titles: snap.title ? [snap.title] : [],
-    ad_delivery_start_time: toIso(a.start_date),
-    ad_snapshot_url: a.ad_archive_id
-      ? `https://www.facebook.com/ads/library/?id=${a.ad_archive_id}`
+    ad_creative_link_titles: snap.title ? [snap.title] : card.title ? [card.title] : [],
+    ad_delivery_start_time: toIso(a.start_date ?? a.startDate),
+    ad_snapshot_url: archiveId
+      ? `https://www.facebook.com/ads/library/?id=${archiveId}`
       : a.ad_snapshot_url,
-    publisher_platforms: platforms.map((p) => String(p).toLowerCase()),
+    publisher_platforms: platforms.filter(Boolean).map((p) => String(p).toLowerCase()),
     image:
       img.original_image_url ||
       img.resized_image_url ||
       img.url ||
       video.video_preview_image_url ||
+      card.original_image_url ||
+      card.resized_image_url ||
       undefined,
   };
 };
@@ -64,7 +71,40 @@ export async function onRequestGet({ request, env }) {
   const country = (url.searchParams.get('country') || 'NZ').toUpperCase().slice(0, 2);
   const status = url.searchParams.get('status') === 'ALL' ? 'ALL' : 'ACTIVE';
 
-  // Provider 1: SearchAPI.io — one key for Meta AND Google
+  // Provider 1: Apify — FREE forever ($5 credits renew monthly ≈ 6,600 ads).
+  // Runs a live scrape of the Ad Library, so allow up to ~2 minutes.
+  if (env.APIFY_TOKEN) {
+    const libraryUrl =
+      'https://www.facebook.com/ads/library/?active_status=' +
+      status.toLowerCase() +
+      '&ad_type=all&country=' +
+      encodeURIComponent(country) +
+      '&q=' +
+      encodeURIComponent(q) +
+      '&search_type=keyword_unordered&media_type=all';
+    const api =
+      'https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?timeout=120&token=' +
+      encodeURIComponent(env.APIFY_TOKEN);
+    try {
+      const res = await fetch(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ urls: [{ url: libraryUrl }], count: 24 }),
+      });
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        return json({
+          error: 'provider_error',
+          message: (data && data.error && data.error.message) || 'Apify run failed',
+        });
+      }
+      return json({ ads: data.slice(0, 24).map(mapArchiveAd) });
+    } catch {
+      return json({ error: 'upstream_failed', message: 'Could not reach Apify' }, 502);
+    }
+  }
+
+  // Provider 2: SearchAPI.io — one key for Meta AND Google
   if (env.SEARCHAPI_KEY) {
     const api = new URL('https://www.searchapi.io/api/v1/search');
     api.searchParams.set('engine', 'meta_ad_library');

@@ -36,6 +36,27 @@ type GoogleCampaignType = 'pmax' | 'search' | 'demand-gen' | 'video' | 'display'
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
 type BingAdType = 'search' | 'audience';
 
+// Ad Library results (mapped by the Cloudflare Pages Functions in /functions/api)
+interface MetaLibAd {
+  id?: string;
+  page_name?: string;
+  ad_creative_bodies?: string[];
+  ad_creative_link_titles?: string[];
+  ad_delivery_start_time?: string;
+  ad_snapshot_url?: string;
+  publisher_platforms?: string[];
+}
+interface GoogleLibAd {
+  advertiser?: string;
+  format?: string;
+  image?: string;
+  link?: string;
+  details_link?: string;
+  first_shown?: string;
+  last_shown?: string;
+  target_domain?: string;
+}
+
 // UTM Parameter presets
 const utmSourceOptions = ['google', 'facebook', 'instagram', 'twitter', 'linkedin', 'email', 'newsletter', 'bing', 'youtube', 'tiktok'];
 const utmMediumOptions = ['cpc', 'cpm', 'social', 'email', 'organic', 'referral', 'display', 'video', 'affiliate', 'banner'];
@@ -448,36 +469,46 @@ export default function Home() {
     if (index === 0) setMetaImageUrl(url);
   };
 
-  // Competitor watchlist (Ad Library tab) — persisted separately
-  const [competitors, setCompetitors] = useState<{ name: string; domain: string }[]>([]);
-  const [compName, setCompName] = useState('');
-  const [compDomain, setCompDomain] = useState('');
-  const [adLibCountry, setAdLibCountry] = useState('NZ');
-  const [adLibQuery, setAdLibQuery] = useState('');
+  // In-app Ad Library search — backed by Cloudflare Pages Functions
+  // (/api/meta-ads → Meta ads_archive, /api/google-ads → SerpApi Transparency)
+  const [libProvider, setLibProvider] = useState<'meta' | 'google'>('meta');
+  const [libQuery, setLibQuery] = useState('');
+  const [libCountry, setLibCountry] = useState('NZ');
+  const [libStatus, setLibStatus] = useState<'ACTIVE' | 'ALL'>('ACTIVE');
+  const [libLoading, setLibLoading] = useState(false);
+  const [libError, setLibError] = useState<'' | 'not_configured' | 'backend' | 'api'>('');
+  const [libErrorDetail, setLibErrorDetail] = useState('');
+  const [libMetaAds, setLibMetaAds] = useState<MetaLibAd[]>([]);
+  const [libGoogleAds, setLibGoogleAds] = useState<GoogleLibAd[]>([]);
+  const [libSearched, setLibSearched] = useState(false);
 
-  useEffect(() => {
+  const searchAdLibrary = async () => {
+    if (!libQuery.trim() || libLoading) return;
+    setLibLoading(true);
+    setLibError('');
+    setLibErrorDetail('');
+    setLibSearched(true);
     try {
-      const saved = JSON.parse(localStorage.getItem('competitorWatchlist') || 'null');
-      if (saved?.competitors) setCompetitors(saved.competitors);
-      if (saved?.country) setAdLibCountry(saved.country);
-    } catch { /* ignore corrupt store */ }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('competitorWatchlist', JSON.stringify({ competitors, country: adLibCountry }));
-  }, [competitors, adLibCountry]);
-
-  // Deep links into each platform's ad transparency library, pre-filled.
-  // These tools block embedding and scraping, so opening a prepared search
-  // in a new tab is the reliable ToS-safe integration for a static site.
-  const adLibraryDeepLinks = (term: string, domain: string, country: string) => ({
-    meta: `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=${encodeURIComponent(country === 'ALL' ? 'ALL' : country)}&q=${encodeURIComponent(term)}&search_type=keyword_unordered&media_type=all`,
-    google: domain
-      ? `https://adstransparency.google.com/?region=${encodeURIComponent(country === 'ALL' ? 'anywhere' : country)}&domain=${encodeURIComponent(domain)}`
-      : `https://adstransparency.google.com/?region=${encodeURIComponent(country === 'ALL' ? 'anywhere' : country)}`,
-    tiktok: `https://library.tiktok.com/ads?region=all&adv_name=${encodeURIComponent(term)}&query_type=1&sort_type=last_shown_date,desc`,
-    microsoft: 'https://adlibrary.ads.microsoft.com/',
-  });
+      const params = new URLSearchParams({ q: libQuery.trim(), country: libCountry });
+      if (libProvider === 'meta') params.set('status', libStatus);
+      const res = await fetch(`/api/${libProvider === 'meta' ? 'meta-ads' : 'google-ads'}?${params.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (!data) throw new Error('backend');
+      if (data.error === 'not_configured') {
+        setLibError('not_configured');
+      } else if (data.error) {
+        setLibError('api');
+        setLibErrorDetail(data.message || data.error);
+      } else if (libProvider === 'meta') {
+        setLibMetaAds(data.ads || []);
+      } else {
+        setLibGoogleAds(data.ads || []);
+      }
+    } catch {
+      setLibError('backend');
+    }
+    setLibLoading(false);
+  };
 
   // UTM Builder State
   const [utmBaseUrl, setUtmBaseUrl] = useState('');
@@ -3454,106 +3485,6 @@ export default function Home() {
     );
   };
 
-  // Ad Library Links
-  const adLibraryLinks = [
-    {
-      category: 'Meta (Facebook & Instagram)',
-      links: [
-        { name: 'Meta Ad Library', url: 'https://www.facebook.com/ads/library/', description: 'Search all active ads on Facebook, Instagram, Messenger & Audience Network' },
-        { name: 'Meta Ad Library Report', url: 'https://www.facebook.com/ads/library/report/', description: 'View spending reports for ads about social issues, elections or politics' },
-        { name: 'Meta Business Help', url: 'https://www.facebook.com/business/help', description: 'Official Meta advertising help center' },
-      ]
-    },
-    {
-      category: 'Google',
-      links: [
-        { name: 'Google Ads Transparency Center', url: 'https://adstransparency.google.com/', description: 'Search ads across Google services including Search, YouTube & Display' },
-        { name: 'Google Ads Help', url: 'https://support.google.com/google-ads', description: 'Official Google Ads support documentation' },
-        { name: 'Think with Google', url: 'https://www.thinkwithgoogle.com/', description: 'Marketing insights and trends from Google' },
-      ]
-    },
-    {
-      category: 'TikTok',
-      links: [
-        { name: 'TikTok Creative Center', url: 'https://ads.tiktok.com/business/creativecenter/pc/en', description: 'Discover top ads, trends, and creative insights on TikTok' },
-        { name: 'TikTok Ad Library', url: 'https://library.tiktok.com/', description: 'Search ads running on TikTok' },
-        { name: 'TikTok Business Help', url: 'https://ads.tiktok.com/help/', description: 'Official TikTok advertising help center' },
-      ]
-    },
-    {
-      category: 'LinkedIn',
-      links: [
-        { name: 'LinkedIn Ad Library', url: 'https://www.linkedin.com/ad-library/', description: 'Search ads running on LinkedIn' },
-        { name: 'LinkedIn Marketing Solutions', url: 'https://business.linkedin.com/marketing-solutions', description: 'LinkedIn advertising platform' },
-      ]
-    },
-    {
-      category: 'Twitter / X',
-      links: [
-        { name: 'X Ads Transparency Center', url: 'https://ads.x.com/transparency', description: 'Search ads running on X (Twitter)' },
-        { name: 'X Business', url: 'https://business.x.com/', description: 'X advertising platform' },
-      ]
-    },
-    {
-      category: 'Other Platforms',
-      links: [
-        { name: 'Snapchat Political Ads Library', url: 'https://www.snap.com/en-US/political-ads', description: 'Political and advocacy ads on Snapchat' },
-        { name: 'Pinterest Ads Manager', url: 'https://ads.pinterest.com/', description: 'Pinterest advertising platform' },
-        { name: 'Amazon Advertising', url: 'https://advertising.amazon.com/', description: 'Amazon advertising platform' },
-        { name: 'Microsoft Ad Library', url: 'https://adlibrary.ads.microsoft.com/', description: 'Search ads running on Bing, MSN & Microsoft network' },
-        { name: 'Microsoft Advertising', url: 'https://ads.microsoft.com/', description: 'Bing & Microsoft advertising platform' },
-      ]
-    },
-    {
-      category: 'Ad Spy & Research Tools',
-      links: [
-        { name: 'AdSpy', url: 'https://adspy.com/', description: 'Largest searchable database of Facebook & Instagram ads' },
-        { name: 'BigSpy', url: 'https://bigspy.com/', description: 'Free ad spy tool for multiple platforms' },
-        { name: 'Minea', url: 'https://minea.com/', description: 'Ad spy for e-commerce and dropshipping' },
-        { name: 'PowerAdSpy', url: 'https://poweradspy.com/', description: 'Social media ad intelligence tool' },
-        { name: 'Foreplay', url: 'https://www.foreplay.co/', description: 'Save & organize ads for creative inspiration' },
-      ]
-    },
-  ];
-
-  const renderAdLibrary = () => {
-    return (
-      <div className="space-y-6">
-        {adLibraryLinks.map((category, idx) => (
-          <div key={idx} className="glass rounded-2xl border border-white/20 overflow-hidden shadow-xl card-hover">
-            <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 px-5 py-4 border-b border-white/10">
-              <h3 className="font-bold gradient-text text-lg">{category.category}</h3>
-            </div>
-            <div className="divide-y divide-gray-100/50">
-              {category.links.map((link, linkIdx) => (
-                <a
-                  key={linkIdx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-4 px-5 py-4 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-300 group"
-                >
-                  <div className="flex-shrink-0 w-10 h-10 btn-gradient rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors">{link.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">{link.description}</p>
-                  </div>
-                  <svg className="w-5 h-5 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-1 flex-shrink-0 mt-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderGooglePreview = () => {
     switch (googleAdType) {
       case 'search':
@@ -4142,129 +4073,191 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-10">
         {platform === 'library' ? (
-          /* Ad Library - Full Width */
-          <div>
+          /* Ad Library — in-app search of Meta Ad Library & Google Ads Transparency Center */
+          <div className="max-w-5xl mx-auto">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Competitor Ads</h2>
-              <p className="text-sm text-white/80 mt-2">Track competitors across every ad transparency library — one click opens their live ads</p>
+              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Ad Library</h2>
+              <p className="text-sm text-white/80 mt-2">Search competitors&rsquo; live ads without leaving the app</p>
             </div>
 
-            {/* Quick search across all libraries */}
+            {/* Provider tabs */}
+            <div className="flex gap-2 justify-center mb-6">
+              <button
+                onClick={() => { setLibProvider('meta'); setLibError(''); }}
+                className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                  libProvider === 'meta' ? 'btn-gradient text-white shadow-lg glow' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill={libProvider === 'meta' ? '#fff' : '#1877F2'}>
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Meta Ad Library
+              </button>
+              <button
+                onClick={() => { setLibProvider('google'); setLibError(''); }}
+                className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                  libProvider === 'google' ? 'btn-gradient text-white shadow-lg glow' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill={libProvider === 'google' ? '#fff' : '#4285F4'} d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill={libProvider === 'google' ? '#fff' : '#34A853'} d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill={libProvider === 'google' ? '#fff' : '#FBBC05'} d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill={libProvider === 'google' ? '#fff' : '#EA4335'} d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Google Ads Transparency
+              </button>
+            </div>
+
+            {/* Search controls */}
             <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-6">
               <div className="flex flex-wrap items-center gap-3">
                 <input
                   type="text"
-                  value={adLibQuery}
-                  onChange={(e) => setAdLibQuery(e.target.value)}
-                  placeholder="Search a brand, competitor or keyword…"
+                  value={libQuery}
+                  onChange={(e) => setLibQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') searchAdLibrary(); }}
+                  placeholder={libProvider === 'meta' ? 'Search brand, competitor or keyword…' : 'Search advertiser or keyword…'}
                   className="flex-1 min-w-[220px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
                 />
                 <select
-                  value={adLibCountry}
-                  onChange={(e) => setAdLibCountry(e.target.value)}
+                  value={libCountry}
+                  onChange={(e) => setLibCountry(e.target.value)}
                   className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white"
-                  title="Country filter (used by Meta & Google)"
                 >
-                  {['NZ', 'AU', 'US', 'GB', 'CA', 'IE', 'ALL'].map(c => (
-                    <option key={c} value={c}>{c === 'ALL' ? 'All countries' : c}</option>
-                  ))}
+                  {['NZ', 'AU', 'US', 'GB', 'CA', 'IE'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                {(() => {
-                  const links = adLibraryDeepLinks(adLibQuery, '', adLibCountry);
-                  const disabled = !adLibQuery.trim();
-                  const btn = 'px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 whitespace-nowrap';
-                  return (
-                    <>
-                      <a href={disabled ? undefined : links.meta} target="_blank" rel="noopener noreferrer"
-                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-[#1877F2] text-white hover:shadow-lg'}`}>
-                        Meta Ad Library
-                      </a>
-                      <a href={disabled ? undefined : links.google} target="_blank" rel="noopener noreferrer"
-                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-white text-gray-800 border border-gray-300 hover:shadow-lg'}`}>
-                        Google Transparency
-                      </a>
-                      <a href={disabled ? undefined : links.tiktok} target="_blank" rel="noopener noreferrer"
-                         className={`${btn} ${disabled ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'bg-black text-white hover:shadow-lg'}`}>
-                        TikTok Library
-                      </a>
-                    </>
-                  );
-                })()}
-              </div>
-              <p className="text-xs text-white/70 mt-3">
-                Tip: for Google, add competitors below with their domain — the Transparency Center finds advertisers by website. TikTok&rsquo;s library fully covers EU ads; use Creative Center (below) for top-performing ads elsewhere.
-              </p>
-            </div>
-
-            {/* Competitor watchlist */}
-            <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-10">
-              <h3 className="text-lg font-bold gradient-text mb-4">Competitor watchlist</h3>
-              <div className="flex flex-wrap gap-3 mb-5">
-                <input
-                  type="text"
-                  value={compName}
-                  onChange={(e) => setCompName(e.target.value)}
-                  placeholder="Competitor / brand name"
-                  className="flex-1 min-w-[180px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
-                />
-                <input
-                  type="text"
-                  value={compDomain}
-                  onChange={(e) => setCompDomain(e.target.value)}
-                  placeholder="Website (for Google), e.g. competitor.co.nz"
-                  className="flex-1 min-w-[220px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
-                />
+                {libProvider === 'meta' && (
+                  <select
+                    value={libStatus}
+                    onChange={(e) => setLibStatus(e.target.value as 'ACTIVE' | 'ALL')}
+                    className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white"
+                  >
+                    <option value="ACTIVE">Active ads</option>
+                    <option value="ALL">All ads</option>
+                  </select>
+                )}
                 <button
-                  onClick={() => {
-                    if (!compName.trim()) return;
-                    setCompetitors(prev => [...prev, { name: compName.trim(), domain: compDomain.trim().replace(/^https?:\/\//, '').split('/')[0] }]);
-                    setCompName('');
-                    setCompDomain('');
-                  }}
-                  className="px-5 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  onClick={searchAdLibrary}
+                  disabled={libLoading || !libQuery.trim()}
+                  className="px-6 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
                 >
-                  + Add
+                  {libLoading ? 'Searching…' : 'Search'}
                 </button>
               </div>
-              {competitors.length === 0 ? (
-                <p className="text-sm text-gray-500">No competitors saved yet — add the brands you want to monitor. The list stays in your browser.</p>
-              ) : (
-                <div className="space-y-2">
-                  {competitors.map((comp, i) => {
-                    const links = adLibraryDeepLinks(comp.name, comp.domain, adLibCountry);
-                    const chip = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap';
-                    return (
-                      <div key={i} className="flex flex-wrap items-center gap-2 bg-white/80 rounded-xl px-4 py-3 border border-gray-100">
-                        <div className="flex-1 min-w-[140px]">
-                          <p className="text-sm font-semibold text-gray-900">{comp.name}</p>
-                          {comp.domain && <p className="text-xs text-gray-500">{comp.domain}</p>}
-                        </div>
-                        <a href={links.meta} target="_blank" rel="noopener noreferrer" className={`${chip} bg-[#1877F2] text-white hover:shadow-md`}>Meta</a>
-                        <a href={links.google} target="_blank" rel="noopener noreferrer" className={`${chip} bg-gray-800 text-white hover:shadow-md`} title={comp.domain ? `Searches ${comp.domain}` : 'Add a domain for a pre-filled Google search'}>Google{!comp.domain && ' *'}</a>
-                        <a href={links.tiktok} target="_blank" rel="noopener noreferrer" className={`${chip} bg-black text-white hover:shadow-md`}>TikTok</a>
-                        <a href={links.microsoft} target="_blank" rel="noopener noreferrer" className={`${chip} bg-[#00A4EF] text-white hover:shadow-md`}>Microsoft</a>
-                        <button
-                          onClick={() => setCompetitors(prev => prev.filter((_, j) => j !== i))}
-                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                          title="Remove"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
-            <div className="mb-8 text-center">
-              <h2 className="text-xl font-bold text-white drop-shadow-lg inline-block">All Ad Libraries &amp; Research Tools</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 card-grid">
-              {renderAdLibrary()}
-            </div>
+            {/* Errors & setup */}
+            {libError === 'not_configured' && (
+              <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-6">
+                <h3 className="text-lg font-bold gradient-text mb-3">
+                  {libProvider === 'meta' ? 'Connect the Meta Ad Library API' : 'Connect Google Ads Transparency (via SerpApi)'}
+                </h3>
+                {libProvider === 'meta' ? (
+                  <ol className="text-sm text-gray-700 space-y-2 list-decimal ml-5">
+                    <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">developers.facebook.com</a> → My Apps → Create App (type: Other → Business).</li>
+                    <li>Open Graph API Explorer, select your app and generate a <strong>User access token</strong>, then extend it to long-lived (Token Debugger → Extend).</li>
+                    <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> → save &amp; redeploy.</li>
+                  </ol>
+                ) : (
+                  <ol className="text-sm text-gray-700 space-y-2 list-decimal ml-5">
+                    <li>Google offers <strong>no official API</strong> for the Transparency Center — SerpApi is the practical option (paid, from ~US$75/mo).</li>
+                    <li>Create an account at <a href="https://serpapi.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">serpapi.com</a> and copy your API key.</li>
+                    <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SERPAPI_KEY</code> → save &amp; redeploy.</li>
+                  </ol>
+                )}
+                {libProvider === 'meta' && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
+                    Coverage note: Meta&rsquo;s official API returns political/issue ads worldwide plus <strong>all ads delivered to the EU</strong>. NZ/AU-only commercial ads are mostly not included — for full coverage a third-party Meta ads API (e.g. ScrapeCreators, Apify) can be plugged into the same endpoint later.
+                  </p>
+                )}
+              </div>
+            )}
+            {libError === 'backend' && (
+              <div className="glass rounded-2xl shadow-xl p-5 border border-white/20 mb-6">
+                <p className="text-sm text-gray-700">
+                  The library API isn&rsquo;t reachable here. It runs as a Cloudflare Function on the deployed site — try this search on{' '}
+                  <a href="https://adpreview.insighter.digital" className="text-indigo-600 underline">adpreview.insighter.digital</a>. (Local dev servers don&rsquo;t run the functions.)
+                </p>
+              </div>
+            )}
+            {libError === 'api' && (
+              <div className="glass rounded-2xl shadow-xl p-5 border border-white/20 mb-6">
+                <p className="text-sm text-red-600">The provider returned an error: {libErrorDetail}</p>
+              </div>
+            )}
+
+            {/* Results */}
+            {libProvider === 'meta' && !libError && libSearched && !libLoading && (
+              libMetaAds.length === 0 ? (
+                <p className="text-center text-white/80 text-sm">No ads found for this search. (The official API covers political/issue ads worldwide and all EU-delivered ads.)</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {libMetaAds.map((ad, i) => (
+                    <div key={ad.id || i} className="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-bold text-gray-900">{ad.page_name || 'Unknown page'}</p>
+                        {ad.ad_delivery_start_time && (
+                          <span className="text-xs text-gray-400">since {new Date(ad.ad_delivery_start_time).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                      {ad.ad_creative_link_titles?.[0] && (
+                        <p className="text-sm font-semibold text-gray-800 mb-1">{ad.ad_creative_link_titles[0]}</p>
+                      )}
+                      {ad.ad_creative_bodies?.[0] && (
+                        <p className="text-sm text-gray-600 line-clamp-4 whitespace-pre-wrap mb-3">{ad.ad_creative_bodies[0]}</p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-1">
+                          {(ad.publisher_platforms || []).slice(0, 4).map(p => (
+                            <span key={p} className="text-[10px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 capitalize">{p}</span>
+                          ))}
+                        </div>
+                        {ad.ad_snapshot_url && (
+                          <a href={ad.ad_snapshot_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">
+                            View ad ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+            {libProvider === 'google' && !libError && libSearched && !libLoading && (
+              libGoogleAds.length === 0 ? (
+                <p className="text-center text-white/80 text-sm">No ads found for this search.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {libGoogleAds.map((ad, i) => (
+                    <div key={i} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                      {ad.image && (
+                        <div className="bg-gray-50 border-b border-gray-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={ad.image} alt="Ad creative" className="w-full max-h-48 object-contain" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <p className="text-sm font-bold text-gray-900">{ad.advertiser || ad.target_domain || 'Advertiser'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 capitalize">
+                          {ad.format || 'ad'}{ad.last_shown ? ` · last shown ${ad.last_shown}` : ''}
+                        </p>
+                        {(ad.details_link || ad.link) && (
+                          <a href={ad.details_link || ad.link} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline mt-2 inline-block">
+                            View in Transparency Center ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+            {!libSearched && !libError && (
+              <p className="text-center text-white/70 text-sm">
+                Search a competitor to see their live ads here — results come from {libProvider === 'meta' ? "Meta's official Ad Library API" : 'the Google Ads Transparency Center (via SerpApi)'}.
+              </p>
+            )}
           </div>
         ) : platform === 'google' && googleCampaignType === 'pmax' ? (
           <PMaxAssetGroup />

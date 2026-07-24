@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { jsPDF } from 'jspdf';
 import GoogleSearchAd from '@/components/previews/GoogleSearchAd';
 import GoogleDisplayAd from '@/components/previews/GoogleDisplayAd';
 import YouTubeInStreamAd from '@/components/previews/YouTubeInStreamAd';
@@ -701,6 +700,7 @@ export default function Home() {
         img.src = dataUrl;
       });
 
+      const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({
         orientation: img.width > img.height ? 'landscape' : 'portrait',
         unit: 'px',
@@ -1434,11 +1434,16 @@ export default function Home() {
   }, []);
 
   // Auto-save to localStorage on data change (paused in shared view so a
-  // received link never silently overwrites the viewer's own draft)
+  // received link never silently overwrites the viewer's own draft).
+  // Debounced: serialising the draft includes base64 images and can take
+  // tens of milliseconds — doing it on every keystroke made typing laggy.
   useEffect(() => {
     if (sharedView) return;
-    const data = getAdData();
-    localStorage.setItem('adPreviewData', JSON.stringify(data));
+    const timer = setTimeout(() => {
+      localStorage.setItem('adPreviewData', JSON.stringify(getAdData()));
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedView, businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
       sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
       promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
@@ -3848,7 +3853,7 @@ export default function Home() {
                renderBingPreview()}
             </div>
           </div>
-          <p className="text-center text-xs text-white/70 mt-6">
+          <p className="text-center text-xs text-gray-400 mt-6">
             Built with <a href={`${typeof window !== 'undefined' ? window.location.origin : ''}`} className="underline">Ad Preview Builder</a>
           </p>
         </main>
@@ -4197,8 +4202,8 @@ export default function Home() {
           /* Ad Library — in-app search of Meta Ad Library & Google Ads Transparency Center */
           <div className="max-w-5xl mx-auto">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-bold text-white drop-shadow-lg inline-block">Ad Library</h2>
-              <p className="text-sm text-white/80 mt-2">Search competitors&rsquo; live ads without leaving the app</p>
+              <h2 className="text-2xl font-bold text-gray-900 inline-block">Ad Library</h2>
+              <p className="text-sm text-gray-500 mt-2">Search competitors&rsquo; live ads without leaving the app</p>
             </div>
 
             {/* Automatic competitor discovery */}
@@ -4406,7 +4411,7 @@ export default function Home() {
             {/* Results */}
             {libProvider === 'meta' && !libError && libSearched && !libLoading && (
               libMetaAds.length === 0 ? (
-                <p className="text-center text-white/80 text-sm">No ads found for this search. (The official API covers political/issue ads worldwide and all EU-delivered ads.)</p>
+                <p className="text-center text-gray-500 text-sm">No ads found for this search. (The official API covers political/issue ads worldwide and all EU-delivered ads.)</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {libMetaAds.map((ad, i) => (
@@ -4448,7 +4453,7 @@ export default function Home() {
             )}
             {libProvider === 'google' && !libError && libSearched && !libLoading && (
               libGoogleAds.length === 0 ? (
-                <p className="text-center text-white/80 text-sm">No ads found — tip: search by the competitor&rsquo;s website domain (e.g. competitor.co.nz) for exact advertiser matches.</p>
+                <p className="text-center text-gray-500 text-sm">No ads found — tip: search by the competitor&rsquo;s website domain (e.g. competitor.co.nz) for exact advertiser matches.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {libGoogleAds.map((ad, i) => (
@@ -4476,7 +4481,7 @@ export default function Home() {
               )
             )}
             {!libSearched && !libError && (
-              <p className="text-center text-white/70 text-sm">
+              <p className="text-center text-gray-500 text-sm">
                 Search a competitor to see their live ads here — results come from {libProvider === 'meta' ? "Meta's official Ad Library API" : 'the Google Ads Transparency Center (via SerpApi)'}.
               </p>
             )}

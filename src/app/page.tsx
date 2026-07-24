@@ -45,6 +45,7 @@ interface MetaLibAd {
   ad_delivery_start_time?: string;
   ad_snapshot_url?: string;
   publisher_platforms?: string[];
+  image?: string;
 }
 interface GoogleLibAd {
   advertiser?: string;
@@ -4154,11 +4155,23 @@ export default function Home() {
                   {libProvider === 'meta' ? 'Connect the Meta Ad Library API' : 'Connect Google Ads Transparency (via SerpApi)'}
                 </h3>
                 {libProvider === 'meta' ? (
-                  <ol className="text-sm text-gray-700 space-y-2 list-decimal ml-5">
-                    <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">developers.facebook.com</a> → My Apps → Create App (type: Other → Business).</li>
-                    <li>Open Graph API Explorer, select your app and generate a <strong>User access token</strong>, then extend it to long-lived (Token Debugger → Extend).</li>
-                    <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> → save &amp; redeploy.</li>
-                  </ol>
+                  <div className="text-sm text-gray-700 space-y-4">
+                    <div>
+                      <p className="font-semibold mb-1">Option A — full NZ/AU coverage (recommended, paid)</p>
+                      <ol className="space-y-1 list-decimal ml-5">
+                        <li>Sign up at <a href="https://scrapecreators.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">scrapecreators.com</a> and copy your API key.</li>
+                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SCRAPECREATORS_API_KEY</code> → save &amp; redeploy.</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Option B — official Meta API (free, limited)</p>
+                      <ol className="space-y-1 list-decimal ml-5">
+                        <li>Complete identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a> (takes days).</li>
+                        <li>Generate a long-lived User token in Graph API Explorer and add it as <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> in Cloudflare → redeploy.</li>
+                        <li>Coverage: political/issue ads worldwide + UK/EU-delivered ads only — most NZ commercial ads won&rsquo;t appear.</li>
+                      </ol>
+                    </div>
+                  </div>
                 ) : (
                   <ol className="text-sm text-gray-700 space-y-2 list-decimal ml-5">
                     <li>Google offers <strong>no official API</strong> for the Transparency Center — SerpApi is the practical option (paid, from ~US$75/mo).</li>
@@ -4195,6 +4208,12 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {libMetaAds.map((ad, i) => (
                     <div key={ad.id || i} className="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
+                      {ad.image && (
+                        <div className="bg-gray-50 border border-gray-100 rounded-lg mb-3 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={ad.image} alt="Ad creative" className="w-full max-h-56 object-contain" />
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-bold text-gray-900">{ad.page_name || 'Unknown page'}</p>
                         {ad.ad_delivery_start_time && (

@@ -42,3 +42,4 @@ export const checkAuth = async (request, env) => {
   if (!/^\d+$/.test(expiry) || Number(expiry) < Date.now()) return false;
   return (await sign(secret, expiry)) === sig;
 };
+

@@ -175,6 +175,10 @@ export default function Home() {
   // draft isn't overwritten until they explicitly open the ad in the builder.
   const [sharedView, setSharedView] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'busy' | 'copied' | 'failed'>('idle');
+  // Google campaign-builder data carried by a share link (PMax, Demand Gen, …).
+  // Held here until the recipient explicitly opens it in the builder — only
+  // then is it written into their localStorage store.
+  const [sharedCampaignStore, setSharedCampaignStore] = useState<{ key: string; value: unknown } | null>(null);
 
   // Toggle dark mode
   useEffect(() => {
@@ -546,10 +550,25 @@ export default function Home() {
       const hadVideo = metaMediaUrls.some((u, i) => u && (metaMediaKinds[i] === 'video' || u.startsWith('blob:')));
       data.pageImageUrl = await downscaleImage(data.pageImageUrl, 160, 0.7);
       data.businessLogoUrl = await downscaleImage(data.businessLogoUrl, 160, 0.7);
+      data.logoUrl = await downscaleImage(data.logoUrl, 160, 0.7);
       data.metaMediaUrls = await Promise.all(data.metaMediaUrls.map(u => downscaleImage(u)));
       data.searchImageUrls = await Promise.all(data.searchImageUrls.map(u => downscaleImage(u)));
       data.productImageUrl = await downscaleImage(data.productImageUrl);
-      const encoded = await encodeShareData(data);
+      data.imageUrl = await downscaleImage(data.imageUrl);
+      data.metaImageUrl = await downscaleImage(data.metaImageUrl);
+      const payload: Record<string, unknown> = { ...data };
+      // Google campaign builders keep their data in their own stores — carry
+      // the selected builder's saved data along so the recipient can open it
+      if (platform === 'google') {
+        const store = CAMPAIGN_STORES.find(c => c.type === googleCampaignType);
+        if (store) {
+          try {
+            const saved = localStorage.getItem(store.key);
+            if (saved) payload.campaignStore = { key: store.key, value: JSON.parse(saved) };
+          } catch { /* corrupt store — share without it */ }
+        }
+      }
+      const encoded = await encodeShareData(payload);
       const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`;
       await navigator.clipboard.writeText(url);
       setShareState('copied');
@@ -597,6 +616,16 @@ export default function Home() {
     productRating,
     productReviewCount,
     productShipping,
+    // Shared/legacy fields used by Google Display, TikTok and LinkedIn editors
+    imageUrl,
+    logoUrl,
+    ctaText,
+    displaySize,
+    username,
+    caption,
+    headline,
+    description,
+    metaImageUrl: metaImageUrl.startsWith('blob:') ? '' : metaImageUrl,
     // Meta Ads
     metaAdName,
     partnershipAd,
@@ -680,6 +709,15 @@ export default function Home() {
     if (data.productRating) setProductRating(data.productRating as string);
     if (data.productReviewCount) setProductReviewCount(data.productReviewCount as string);
     if (data.productShipping) setProductShipping(data.productShipping as string);
+    if (data.imageUrl) setImageUrl(data.imageUrl as string);
+    if (data.logoUrl) setLogoUrl(data.logoUrl as string);
+    if (data.ctaText) setCtaText(data.ctaText as string);
+    if (data.displaySize) setDisplaySize(data.displaySize as typeof displaySize);
+    if (data.username) setUsername(data.username as string);
+    if (data.caption) setCaption(data.caption as string);
+    if (data.headline) setHeadline(data.headline as string);
+    if (data.description) setDescription(data.description as string);
+    if (data.metaImageUrl) setMetaImageUrl(data.metaImageUrl as string);
     if (data.metaAdName) setMetaAdName(data.metaAdName as string);
     if (data.partnershipAd !== undefined) setPartnershipAd(data.partnershipAd as boolean);
     if (data.pageName) setPageName(data.pageName as string);
@@ -1163,6 +1201,10 @@ export default function Home() {
       decodeShareData(hash.slice(3))
         .then((data) => {
           loadAdData(data);
+          const store = data.campaignStore as { key: string; value: unknown } | undefined;
+          if (store && CAMPAIGN_STORES.some(c => c.key === store.key)) {
+            setSharedCampaignStore(store);
+          }
           setSharedView(true);
         })
         .catch(() => {
@@ -1195,7 +1237,8 @@ export default function Home() {
       metaAdName, partnershipAd, metaCreativeSource, metaFormat, multiAdvertiser, browserAddon,
       advantagePlusCreative, textGeneration, optimizeTextPerPerson, lifecycleStrategy,
       productTitle, productPrice, productStore, productImageUrl, productRating,
-      productReviewCount, productShipping]);
+      productReviewCount, productShipping,
+      imageUrl, logoUrl, ctaText, displaySize, username, caption, headline, description, metaImageUrl]);
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {
@@ -3392,6 +3435,9 @@ export default function Home() {
             <button
               onClick={() => {
                 if (confirm('Open this shared ad in the builder? It will replace your currently saved draft.')) {
+                  if (sharedCampaignStore) {
+                    localStorage.setItem(sharedCampaignStore.key, JSON.stringify(sharedCampaignStore.value));
+                  }
                   window.location.hash = '';
                   setSharedView(false);
                 }
@@ -3444,7 +3490,20 @@ export default function Home() {
               ref={previewRef}
               className="flex items-center justify-center min-h-[500px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 overflow-auto border border-gray-100"
             >
-              {platform === 'google' ? renderGooglePreview() :
+              {platform === 'google' && googleCampaignType !== 'search' ? (
+                <div className="text-center max-w-sm">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">
+                    Google Ads — {googleCampaignTypes.find(c => c.id === googleCampaignType)?.label} campaign
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    This campaign type has its own builder with multiple placements. Click &ldquo;Open in builder&rdquo; above to view and edit everything that was shared.
+                  </p>
+                  {!sharedCampaignStore && (
+                    <p className="text-xs text-amber-600">Note: the sender&rsquo;s builder had no saved data for this campaign type.</p>
+                  )}
+                </div>
+              ) :
+               platform === 'google' ? renderGooglePreview() :
                platform === 'meta' ? renderMetaPreview() :
                platform === 'tiktok' ? renderTikTokPreview() :
                renderLinkedInPreview()}
@@ -3478,6 +3537,26 @@ export default function Home() {
               <p className="text-gray-600 text-sm mt-1">Preview your ads before publishing to Google Ads & Meta Ads</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Share preview link */}
+              {platform !== 'utm' && platform !== 'library' && (
+                <button
+                  onClick={shareAdPreview}
+                  disabled={shareState === 'busy'}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-300 disabled:opacity-60 ${
+                    shareState === 'copied'
+                      ? 'text-green-700 bg-green-50 border-green-300'
+                      : shareState === 'failed'
+                      ? 'text-red-600 bg-white border-red-300'
+                      : 'text-gray-700 bg-white/80 border-gray-200 hover:bg-white hover:shadow-md card-hover'
+                  }`}
+                  title="Copy a shareable preview link"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  {shareState === 'busy' ? 'Copying…' : shareState === 'copied' ? 'Copied!' : shareState === 'failed' ? 'Failed' : 'Share'}
+                </button>
+              )}
               {/* Import */}
               <button
                 onClick={() => fileInputRef.current?.click()}

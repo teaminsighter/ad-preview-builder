@@ -4126,7 +4126,10 @@ export default function Home() {
                   onChange={(e) => setLibCountry(e.target.value)}
                   className="px-3 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white"
                 >
-                  {['NZ', 'AU', 'US', 'GB', 'CA', 'IE'].map(c => <option key={c} value={c}>{c}</option>)}
+                  {(libProvider === 'meta'
+                    ? ['GB', 'IE', 'DE', 'FR', 'ES', 'IT', 'NL', 'SE', 'PL', 'US', 'NZ', 'AU', 'CA']
+                    : ['NZ', 'AU', 'US', 'GB', 'CA', 'IE']
+                  ).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {libProvider === 'meta' && (
                   <select
@@ -4146,6 +4149,11 @@ export default function Home() {
                   {libLoading ? 'Searching…' : 'Search'}
                 </button>
               </div>
+              {libProvider === 'meta' && (
+                <p className="text-xs text-white/70 mt-3">
+                  Free official API: <strong>all ad types</strong> for UK &amp; EU countries · other countries return political/issue ads only (Meta&rsquo;s rule, not ours).
+                </p>
+              )}
             </div>
 
             {/* Errors & setup */}
@@ -4157,27 +4165,29 @@ export default function Home() {
                 {libProvider === 'meta' ? (
                   <div className="text-sm text-gray-700 space-y-4">
                     <div>
-                      <p className="font-semibold mb-1">Option A — full NZ/AU coverage (recommended, paid)</p>
+                      <p className="font-semibold mb-1">Option A — official Meta API (FREE)</p>
                       <ol className="space-y-1 list-decimal ml-5">
-                        <li>Sign up at <a href="https://scrapecreators.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">scrapecreators.com</a> and copy your API key.</li>
-                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SCRAPECREATORS_API_KEY</code> → save &amp; redeploy.</li>
+                        <li>One-time: complete identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a> (free, approval takes a few days).</li>
+                        <li>Generate a User token in <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">Graph API Explorer</a> and extend it to long-lived (token ⓘ → Access Token Tool → Extend).</li>
+                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> → save &amp; redeploy.</li>
+                        <li>Coverage: all ad types for UK &amp; EU countries + political/issue ads worldwide.</li>
                       </ol>
                     </div>
                     <div>
-                      <p className="font-semibold mb-1">Option B — official Meta API (free, limited)</p>
-                      <ol className="space-y-1 list-decimal ml-5">
-                        <li>Complete identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a> (takes days).</li>
-                        <li>Generate a long-lived User token in Graph API Explorer and add it as <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> in Cloudflare → redeploy.</li>
-                        <li>Coverage: political/issue ads worldwide + UK/EU-delivered ads only — most NZ commercial ads won&rsquo;t appear.</li>
-                      </ol>
+                      <p className="font-semibold mb-1">Option B — full coverage everywhere (paid, optional)</p>
+                      <p className="ml-1">Add <code className="bg-gray-100 px-1 rounded">SCRAPECREATORS_API_KEY</code> from <a href="https://scrapecreators.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">scrapecreators.com</a> instead — covers every country including NZ/AU with creative images.</p>
                     </div>
                   </div>
                 ) : (
-                  <ol className="text-sm text-gray-700 space-y-2 list-decimal ml-5">
-                    <li>Google offers <strong>no official API</strong> for the Transparency Center — SerpApi is the practical option (paid, from ~US$75/mo).</li>
-                    <li>Create an account at <a href="https://serpapi.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">serpapi.com</a> and copy your API key.</li>
-                    <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SERPAPI_KEY</code> → save &amp; redeploy.</li>
-                  </ol>
+                  <div className="text-sm text-gray-700 space-y-3">
+                    <p className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
+                      Google provides <strong>no free API</strong> for the Transparency Center — only the website. In-app Google results require SerpApi (paid; a free tier of 100 searches/month exists at serpapi.com).
+                    </p>
+                    <ol className="space-y-1 list-decimal ml-5">
+                      <li>Create an account at <a href="https://serpapi.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">serpapi.com</a> and copy your API key (free tier: 100 searches/month).</li>
+                      <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SERPAPI_KEY</code> → save &amp; redeploy.</li>
+                    </ol>
+                  </div>
                 )}
                 {libProvider === 'meta' && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">

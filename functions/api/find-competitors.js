@@ -48,22 +48,40 @@ const extractKeywords = (html, brandHint) => {
     if (firstSentence.split(' ').length >= 3) candidates.push(firstSentence);
   }
 
-  // Prefer segments that do not just repeat the brand name
+  // Distil each candidate down to its core niche phrase: drop hype words,
+  // geo words and stopwords, keep the first few meaningful words in order.
+  // "Find New Zealand's Top Real Estate Agents Fast" → "real estate agents"
+  const STOP = new Set([
+    'find', 'fast', 'top', 'best', 'your', 'get', 'the', 'a', 'an', 'of', 'for', 'and',
+    'with', 'in', 'to', 'we', 'our', 'you', 'now', 'today', 'free', 'online', 'official',
+    'site', 'website', 'welcome', 'more', 'here', 'easy', 'easily', 'quality', 'trusted',
+    'leading', 'premier', 'number', 'one', 'no1',extra(brandHint),
+    'new', 'zealand', "zealand's", 'zealands', 'nz', 'aotearoa', 'australia', 'australian', 'au',
+  ].filter(Boolean));
+
+  const distil = (text) => {
+    const tokens = text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && !STOP.has(w));
+    return tokens.slice(0, 3).join(' ');
+  };
+
   const brand = (brandHint || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const scored = candidates
-    .map((c) => ({
-      c,
-      isBrand: brand && c.toLowerCase().replace(/[^a-z0-9]/g, '').includes(brand),
-      words: c.split(' ').length,
-    }))
-    .sort((a, b) => Number(a.isBrand) - Number(b.isBrand) || Math.abs(a.words - 5) - Math.abs(b.words - 5));
-  const unique = [];
-  for (const s of scored) {
-    if (!unique.some((u) => u.toLowerCase() === s.c.toLowerCase())) unique.push(s.c);
-    if (unique.length >= 2) break;
+  const phrases = [];
+  for (const c of candidates) {
+    const p = distil(c);
+    if (!p) continue;
+    if (brand && p.replace(/[^a-z0-9]/g, '').includes(brand)) continue;
+    if (!phrases.includes(p)) phrases.push(p);
+    if (phrases.length >= 2) break;
   }
-  return unique.map((u) => u.slice(0, 60));
+  return phrases;
 };
+
+// Brand token itself must never survive into the niche phrase
+const extra = (brandHint) => (brandHint || '').toLowerCase().replace(/[^a-z0-9]/g, '') || null;
 
 export async function onRequestGet({ request, env }) {
   const APIFY_TOKEN = getEnv(env, 'APIFY_TOKEN');

@@ -221,8 +221,57 @@ export default function Home() {
     }
   };
 
-  // Dark Mode
-  const [darkMode, setDarkMode] = useState(false);
+  // Sign-in gate (single team password, no sign-up). Enabled only when
+  // APP_PASSWORD is configured in the Cloudflare environment; the gate is
+  // skipped for shared preview links so recipients can always view them.
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authToken, setAuthToken] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  useEffect(() => {
+    setAuthToken(localStorage.getItem('adpvAuthToken') || '');
+    fetch('/api/login')
+      .then(r => r.json())
+      .then(d => { setAuthEnabled(!!d.enabled); setAuthChecked(true); })
+      .catch(() => { setAuthEnabled(false); setAuthChecked(true); });
+  }, []);
+
+  const tokenValid = (t: string) => {
+    const expiry = Number((t || '').split('.')[0]);
+    return !!t && Number.isFinite(expiry) && expiry > Date.now();
+  };
+
+  const doLogin = async () => {
+    if (loginBusy || !loginPassword) return;
+    setLoginBusy(true);
+    setLoginError('');
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: loginPassword }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('adpvAuthToken', data.token);
+        setAuthToken(data.token);
+        setLoginPassword('');
+      } else {
+        setLoginError('Wrong password — try again.');
+      }
+    } catch {
+      setLoginError('Could not reach the server.');
+    }
+    setLoginBusy(false);
+  };
+
+  const signOut = () => {
+    localStorage.removeItem('adpvAuthToken');
+    setAuthToken('');
+  };
 
   // Shared-preview mode: set when the page is opened via a #s=... share link.
   // The recipient sees a read-only preview; auto-save is paused so their own
@@ -234,14 +283,11 @@ export default function Home() {
   // then is it written into their localStorage store.
   const [sharedCampaignStore, setSharedCampaignStore] = useState<{ key: string; value: unknown } | null>(null);
 
-  // Toggle dark mode
+  // Dark mode removed — it caused white-on-white text with the light-styled
+  // components; ensure no stale class lingers from previous sessions
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   // Google Ads State
   const [businessName, setBusinessName] = useState('');
@@ -504,7 +550,9 @@ export default function Home() {
     setFindResult(null);
     try {
       const params = new URLSearchParams({ q: findQuery.trim(), country: libCountry });
-      const res = await fetch(`/api/find-competitors?${params.toString()}`);
+      const res = await fetch(`/api/find-competitors?${params.toString()}`, {
+        headers: authToken ? { 'x-auth': authToken } : undefined,
+      });
       const data = await res.json().catch(() => null);
       if (!data) throw new Error('backend');
       if (data.error) {
@@ -531,7 +579,9 @@ export default function Home() {
     try {
       const params = new URLSearchParams({ q: query, country: libCountry });
       if (provider === 'meta') params.set('status', libStatus);
-      const res = await fetch(`/api/${provider === 'meta' ? 'meta-ads' : 'google-ads'}?${params.toString()}`);
+      const res = await fetch(`/api/${provider === 'meta' ? 'meta-ads' : 'google-ads'}?${params.toString()}`, {
+        headers: authToken ? { 'x-auth': authToken } : undefined,
+      });
       const data = await res.json().catch(() => null);
       if (!data) throw new Error('backend');
       if (data.error === 'not_configured') {
@@ -3652,6 +3702,41 @@ export default function Home() {
     );
   };
 
+  // Sign-in gate — full-screen, shown only when APP_PASSWORD is configured.
+  // Shared preview links bypass it so recipients can always view them.
+  if (authChecked && authEnabled && !tokenValid(authToken) && !sharedView) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center px-4">
+        <div className="glass rounded-3xl shadow-2xl p-10 w-full max-w-md text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl btn-gradient flex items-center justify-center shadow-lg glow">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold gradient-text mb-1">Ad Preview Builder</h1>
+          <p className="text-sm text-gray-500 mb-8">Sign in to continue</p>
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') doLogin(); }}
+            placeholder="Password"
+            autoFocus
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm text-center tracking-widest bg-white mb-3"
+          />
+          {loginError && <p className="text-sm text-red-500 mb-3">{loginError}</p>}
+          <button
+            onClick={doLogin}
+            disabled={loginBusy || !loginPassword}
+            className="w-full py-3 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg transition-all duration-300 disabled:opacity-50"
+          >
+            {loginBusy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Read-only shared view for recipients of a #s=... link: just the preview,
   // placement tabs and export — no editor, nothing written to their storage.
   if (sharedView) {
@@ -3904,22 +3989,18 @@ export default function Home() {
                 </svg>
                 Reset
               </button>
-              {/* Dark Mode Toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700 transition-all duration-300"
-                title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {darkMode ? (
-                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+              {/* Sign out (shown when the password gate is active) */}
+              {authEnabled && tokenValid(authToken) && (
+                <button
+                  onClick={signOut}
+                  className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-all duration-300"
+                  title="Sign out"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                  </svg>
-                )}
-              </button>
+                </button>
+              )}
               {/* Save to Browser */}
               <button
                 onClick={saveToLocalStorage}
@@ -4250,8 +4331,8 @@ export default function Home() {
                 </button>
               </div>
               {libProvider === 'meta' && (
-                <p className="text-xs text-white/70 mt-3">
-                  Coverage depends on the connected provider: SearchAPI.io = all countries &amp; ad types · free official Meta API = UK/EU ads + political ads only.
+                <p className="text-xs text-gray-500 mt-3">
+                  Searches run against the live Meta Ad Library — all countries &amp; ad types. Results take 30–90 seconds.
                 </p>
               )}
             </div>

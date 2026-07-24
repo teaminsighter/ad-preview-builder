@@ -10,6 +10,8 @@
 //
 // Uses APIFY_TOKEN (same free allowance as the Meta library search).
 
+import { checkAuth } from '../_auth.js';
+
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
     status,
@@ -84,6 +86,7 @@ const extractKeywords = (html, brandHint) => {
 const extra = (brandHint) => (brandHint || '').toLowerCase().replace(/[^a-z0-9]/g, '') || null;
 
 export async function onRequestGet({ request, env }) {
+  if (!(await checkAuth(request, env))) return json({ error: 'unauthorized' }, 401);
   const APIFY_TOKEN = getEnv(env, 'APIFY_TOKEN');
   if (!APIFY_TOKEN) return json({ error: 'not_configured' });
 

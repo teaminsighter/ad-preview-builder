@@ -15,6 +15,8 @@
 // Env vars: Cloudflare dashboard → Workers & Pages → project → Settings →
 // Environment variables → add → redeploy.
 
+import { checkAuth } from '../_auth.js';
+
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
     status,
@@ -72,6 +74,7 @@ const mapArchiveAd = (a) => {
 };
 
 export async function onRequestGet({ request, env }) {
+  if (!(await checkAuth(request, env))) return json({ error: 'unauthorized' }, 401);
   const url = new URL(request.url);
   const q = url.searchParams.get('q');
   if (!q) return json({ error: 'missing_query' }, 400);

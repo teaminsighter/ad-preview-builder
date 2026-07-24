@@ -4151,7 +4151,7 @@ export default function Home() {
               </div>
               {libProvider === 'meta' && (
                 <p className="text-xs text-white/70 mt-3">
-                  Free official API: <strong>all ad types</strong> for UK &amp; EU countries · other countries return political/issue ads only (Meta&rsquo;s rule, not ours).
+                  Coverage depends on the connected provider: SearchAPI.io = all countries &amp; ad types · free official Meta API = UK/EU ads + political ads only.
                 </p>
               )}
             </div>
@@ -4165,28 +4165,35 @@ export default function Home() {
                 {libProvider === 'meta' ? (
                   <div className="text-sm text-gray-700 space-y-4">
                     <div>
-                      <p className="font-semibold mb-1">Option A — official Meta API (FREE)</p>
+                      <p className="font-semibold mb-1">Easiest — one key powers Meta AND Google (100 free searches)</p>
                       <ol className="space-y-1 list-decimal ml-5">
-                        <li>One-time: complete identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a> (free, approval takes a few days).</li>
-                        <li>Generate a User token in <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">Graph API Explorer</a> and extend it to long-lived (token ⓘ → Access Token Tool → Extend).</li>
-                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code> → save &amp; redeploy.</li>
-                        <li>Coverage: all ad types for UK &amp; EU countries + political/issue ads worldwide.</li>
+                        <li>Sign up at <a href="https://www.searchapi.io" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">searchapi.io</a> (email only — no ID verification, no card) and copy your API key.</li>
+                        <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SEARCHAPI_KEY</code> → save &amp; redeploy.</li>
+                        <li>Coverage: all countries, all ad types, with creative images. 100 free searches, then from US$40/mo.</li>
                       </ol>
                     </div>
                     <div>
-                      <p className="font-semibold mb-1">Option B — full coverage everywhere (paid, optional)</p>
-                      <p className="ml-1">Add <code className="bg-gray-100 px-1 rounded">SCRAPECREATORS_API_KEY</code> from <a href="https://scrapecreators.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">scrapecreators.com</a> instead — covers every country including NZ/AU with creative images.</p>
+                      <p className="font-semibold mb-1">Free forever — official Meta API (needs the owner)</p>
+                      <p className="ml-1">The account owner completes identity verification at <a href="https://www.facebook.com/ads/library/api" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">facebook.com/ads/library/api</a>, then adds a long-lived token as <code className="bg-gray-100 px-1 rounded">META_ACCESS_TOKEN</code>. Coverage: UK/EU ads + political ads only.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-700 space-y-3">
+                  <div className="text-sm text-gray-700 space-y-4">
                     <p className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800">
-                      Google provides <strong>no free API</strong> for the Transparency Center — only the website. In-app Google results require SerpApi (paid; a free tier of 100 searches/month exists at serpapi.com).
+                      Google provides <strong>no official API</strong> for the Transparency Center — these third-party options power in-app results.
                     </p>
-                    <ol className="space-y-1 list-decimal ml-5">
-                      <li>Create an account at <a href="https://serpapi.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">serpapi.com</a> and copy your API key (free tier: 100 searches/month).</li>
-                      <li>In Cloudflare: Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → add <code className="bg-gray-100 px-1 rounded">SERPAPI_KEY</code> → save &amp; redeploy.</li>
-                    </ol>
+                    <div>
+                      <p className="font-semibold mb-1">Easiest — one key powers Google AND Meta (100 free searches)</p>
+                      <ol className="space-y-1 list-decimal ml-5">
+                        <li>Sign up at <a href="https://www.searchapi.io" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">searchapi.io</a> and copy your API key.</li>
+                        <li>Add it as <code className="bg-gray-100 px-1 rounded">SEARCHAPI_KEY</code> in Cloudflare → Workers &amp; Pages → <strong>ad-preview-builder</strong> → Settings → Environment variables → redeploy.</li>
+                        <li>Tip: search competitors by their <strong>website domain</strong> (e.g. competitor.co.nz) for exact matches.</li>
+                      </ol>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-1">Alternative — SerpApi (free tier: 100 searches/month)</p>
+                      <p className="ml-1">Add <code className="bg-gray-100 px-1 rounded">SERPAPI_KEY</code> from <a href="https://serpapi.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">serpapi.com</a> — supports keyword search and renews 100 free searches monthly.</p>
+                    </div>
                   </div>
                 )}
                 {libProvider === 'meta' && (
@@ -4255,7 +4262,7 @@ export default function Home() {
             )}
             {libProvider === 'google' && !libError && libSearched && !libLoading && (
               libGoogleAds.length === 0 ? (
-                <p className="text-center text-white/80 text-sm">No ads found for this search.</p>
+                <p className="text-center text-white/80 text-sm">No ads found — tip: search by the competitor&rsquo;s website domain (e.g. competitor.co.nz) for exact advertiser matches.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {libGoogleAds.map((ad, i) => (

@@ -47,6 +47,14 @@ interface MetaLibAd {
   publisher_platforms?: string[];
   image?: string;
 }
+interface FoundCompetitor {
+  page_name: string;
+  page_id?: string;
+  ad_count: number;
+  image?: string;
+  sample_text?: string;
+}
+
 interface GoogleLibAd {
   advertiser?: string;
   format?: string;
@@ -483,16 +491,47 @@ export default function Home() {
   const [libGoogleAds, setLibGoogleAds] = useState<GoogleLibAd[]>([]);
   const [libSearched, setLibSearched] = useState(false);
 
-  const searchAdLibrary = async () => {
-    if (!libQuery.trim() || libLoading) return;
+  // Competitor discovery state
+  const [findQuery, setFindQuery] = useState('');
+  const [findLoading, setFindLoading] = useState(false);
+  const [findError, setFindError] = useState('');
+  const [findResult, setFindResult] = useState<{ keyword_used: string; competitors: FoundCompetitor[]; ads_scanned: number } | null>(null);
+
+  const findCompetitors = async () => {
+    if (!findQuery.trim() || findLoading) return;
+    setFindLoading(true);
+    setFindError('');
+    setFindResult(null);
+    try {
+      const params = new URLSearchParams({ q: findQuery.trim(), country: libCountry });
+      const res = await fetch(`/api/find-competitors?${params.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (!data) throw new Error('backend');
+      if (data.error) {
+        setFindError(data.message || (data.error === 'not_configured' ? 'The Meta library key (APIFY_TOKEN) must be configured first.' : data.error));
+      } else {
+        setFindResult(data);
+      }
+    } catch {
+      setFindError('The discovery API runs on the deployed site — try this on adpreview.insighter.digital.');
+    }
+    setFindLoading(false);
+  };
+
+  const searchAdLibrary = async (overrideQuery?: string, overrideProvider?: 'meta' | 'google') => {
+    const query = (overrideQuery ?? libQuery).trim();
+    const provider = overrideProvider ?? libProvider;
+    if (!query || libLoading) return;
+    if (overrideQuery !== undefined) setLibQuery(overrideQuery);
+    if (overrideProvider) setLibProvider(overrideProvider);
     setLibLoading(true);
     setLibError('');
     setLibErrorDetail('');
     setLibSearched(true);
     try {
-      const params = new URLSearchParams({ q: libQuery.trim(), country: libCountry });
-      if (libProvider === 'meta') params.set('status', libStatus);
-      const res = await fetch(`/api/${libProvider === 'meta' ? 'meta-ads' : 'google-ads'}?${params.toString()}`);
+      const params = new URLSearchParams({ q: query, country: libCountry });
+      if (provider === 'meta') params.set('status', libStatus);
+      const res = await fetch(`/api/${provider === 'meta' ? 'meta-ads' : 'google-ads'}?${params.toString()}`);
       const data = await res.json().catch(() => null);
       if (!data) throw new Error('backend');
       if (data.error === 'not_configured') {
@@ -500,7 +539,7 @@ export default function Home() {
       } else if (data.error) {
         setLibError('api');
         setLibErrorDetail(data.message || data.error);
-      } else if (libProvider === 'meta') {
+      } else if (provider === 'meta') {
         setLibMetaAds(data.ads || []);
       } else {
         setLibGoogleAds(data.ads || []);
@@ -4081,6 +4120,67 @@ export default function Home() {
               <p className="text-sm text-white/80 mt-2">Search competitors&rsquo; live ads without leaving the app</p>
             </div>
 
+            {/* Automatic competitor discovery */}
+            <div className="glass rounded-2xl shadow-xl p-6 border border-white/20 mb-6">
+              <h3 className="text-lg font-bold gradient-text mb-1">🔍 Find my competitors</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Enter your website (or a keyword that describes your business) — we detect your niche and rank everyone actively running ads in it in your country.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  value={findQuery}
+                  onChange={(e) => setFindQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') findCompetitors(); }}
+                  placeholder="yourbusiness.co.nz  —or—  real estate agent"
+                  className="flex-1 min-w-[240px] px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
+                />
+                <button
+                  onClick={findCompetitors}
+                  disabled={findLoading || !findQuery.trim()}
+                  className="px-6 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                >
+                  {findLoading ? 'Scanning the ad market… (~1–2 min)' : 'Find competitors'}
+                </button>
+              </div>
+              {findError && <p className="text-sm text-red-600 mt-3">{findError}</p>}
+              {findResult && (
+                <div className="mt-5">
+                  <p className="text-xs text-gray-500 mb-3">
+                    Niche detected: <span className="font-semibold text-gray-700">&ldquo;{findResult.keyword_used}&rdquo;</span> · scanned {findResult.ads_scanned} active ads · {findResult.competitors.length} advertisers found
+                  </p>
+                  {findResult.competitors.length === 0 ? (
+                    <p className="text-sm text-gray-600">No other advertisers found for this niche/country — try a broader keyword.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {findResult.competitors.map((comp, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-white/80 rounded-xl px-4 py-3 border border-gray-100">
+                          <span className="text-sm font-bold text-gray-400 w-6">#{i + 1}</span>
+                          {comp.image ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={comp.image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{comp.page_name}</p>
+                            <p className="text-xs text-gray-500 truncate">{comp.sample_text || `${comp.ad_count} active ad${comp.ad_count > 1 ? 's' : ''} in your niche`}</p>
+                          </div>
+                          <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">{comp.ad_count} ad{comp.ad_count > 1 ? 's' : ''}</span>
+                          <button
+                            onClick={() => searchAdLibrary(comp.page_name, 'meta')}
+                            className="px-3 py-1.5 text-xs font-semibold text-white btn-gradient rounded-lg whitespace-nowrap"
+                          >
+                            See their ads →
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Provider tabs */}
             <div className="flex gap-2 justify-center mb-6">
               <button
@@ -4142,7 +4242,7 @@ export default function Home() {
                   </select>
                 )}
                 <button
-                  onClick={searchAdLibrary}
+                  onClick={() => searchAdLibrary()}
                   disabled={libLoading || !libQuery.trim()}
                   className="px-6 py-2.5 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
                 >

@@ -15,6 +15,14 @@ const json = (obj, status = 200) =>
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
   });
 
+
+// Tolerate accidental whitespace in dashboard-entered variable names/values
+const getEnv = (env, name) => {
+  if (env[name]) return String(env[name]).trim();
+  const key = Object.keys(env).find((k) => k.trim() === name);
+  return key ? String(env[key]).trim() : undefined;
+};
+
 // SerpApi region codes = 2000 + ISO 3166-1 numeric
 const SERPAPI_REGIONS = { NZ: '2554', AU: '2036', US: '2840', GB: '2826', CA: '2124', IE: '2372' };
 
@@ -36,11 +44,12 @@ export async function onRequestGet({ request, env }) {
   const country = (url.searchParams.get('country') || 'NZ').toUpperCase().slice(0, 2);
 
   // Provider 1: SearchAPI.io
-  if (env.SEARCHAPI_KEY) {
+  const SEARCHAPI_KEY = getEnv(env, 'SEARCHAPI_KEY');
+  if (SEARCHAPI_KEY) {
     const call = async (params) => {
       const api = new URL('https://www.searchapi.io/api/v1/search');
       Object.entries(params).forEach(([k, v]) => api.searchParams.set(k, v));
-      api.searchParams.set('api_key', env.SEARCHAPI_KEY);
+      api.searchParams.set('api_key', SEARCHAPI_KEY);
       const res = await fetch(api.toString());
       return res.json();
     };
@@ -82,12 +91,13 @@ export async function onRequestGet({ request, env }) {
   }
 
   // Provider 2: SerpApi
-  if (env.SERPAPI_KEY) {
+  const SERPAPI_KEY = getEnv(env, 'SERPAPI_KEY');
+  if (SERPAPI_KEY) {
     const api = new URL('https://serpapi.com/search.json');
     api.searchParams.set('engine', 'google_ads_transparency_center');
     api.searchParams.set('text', q);
     if (SERPAPI_REGIONS[country]) api.searchParams.set('region', SERPAPI_REGIONS[country]);
-    api.searchParams.set('api_key', env.SERPAPI_KEY);
+    api.searchParams.set('api_key', SERPAPI_KEY);
     try {
       const res = await fetch(api.toString());
       const data = await res.json();
@@ -98,5 +108,5 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  return json({ error: 'not_configured' });
+  return json({ error: 'not_configured', env_keys_seen: Object.keys(env) });
 }

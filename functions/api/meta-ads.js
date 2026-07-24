@@ -21,6 +21,13 @@ const json = (obj, status = 200) =>
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
   });
 
+// Tolerate accidental whitespace in dashboard-entered variable names/values
+const getEnv = (env, name) => {
+  if (env[name]) return String(env[name]).trim();
+  const key = Object.keys(env).find((k) => k.trim() === name);
+  return key ? String(env[key]).trim() : undefined;
+};
+
 const toIso = (d) => {
   if (!d) return undefined;
   if (typeof d === 'number') return new Date(d * (d < 1e12 ? 1000 : 1)).toISOString();
@@ -73,7 +80,8 @@ export async function onRequestGet({ request, env }) {
 
   // Provider 1: Apify — FREE forever ($5 credits renew monthly ≈ 6,600 ads).
   // Runs a live scrape of the Ad Library, so allow up to ~2 minutes.
-  if (env.APIFY_TOKEN) {
+  const APIFY_TOKEN = getEnv(env, 'APIFY_TOKEN');
+  if (APIFY_TOKEN) {
     const libraryUrl =
       'https://www.facebook.com/ads/library/?active_status=' +
       status.toLowerCase() +
@@ -84,7 +92,7 @@ export async function onRequestGet({ request, env }) {
       '&search_type=keyword_unordered&media_type=all';
     const api =
       'https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?timeout=120&token=' +
-      encodeURIComponent(env.APIFY_TOKEN);
+      encodeURIComponent(APIFY_TOKEN);
     try {
       const res = await fetch(api, {
         method: 'POST',
@@ -105,13 +113,14 @@ export async function onRequestGet({ request, env }) {
   }
 
   // Provider 2: SearchAPI.io — one key for Meta AND Google
-  if (env.SEARCHAPI_KEY) {
+  const SEARCHAPI_KEY = getEnv(env, 'SEARCHAPI_KEY');
+  if (SEARCHAPI_KEY) {
     const api = new URL('https://www.searchapi.io/api/v1/search');
     api.searchParams.set('engine', 'meta_ad_library');
     api.searchParams.set('q', q);
     api.searchParams.set('country', country);
     api.searchParams.set('active_status', status.toLowerCase());
-    api.searchParams.set('api_key', env.SEARCHAPI_KEY);
+    api.searchParams.set('api_key', SEARCHAPI_KEY);
     try {
       const res = await fetch(api.toString());
       const data = await res.json();
@@ -124,7 +133,8 @@ export async function onRequestGet({ request, env }) {
   }
 
   // Provider 2: ScrapeCreators
-  if (env.SCRAPECREATORS_API_KEY) {
+  const SCRAPECREATORS_API_KEY = getEnv(env, 'SCRAPECREATORS_API_KEY');
+  if (SCRAPECREATORS_API_KEY) {
     const api = new URL('https://api.scrapecreators.com/v1/facebook/adLibrary/search/ads');
     api.searchParams.set('query', q);
     api.searchParams.set('country', country);
@@ -132,7 +142,7 @@ export async function onRequestGet({ request, env }) {
     api.searchParams.set('media_type', 'ALL');
     try {
       const res = await fetch(api.toString(), {
-        headers: { 'x-api-key': env.SCRAPECREATORS_API_KEY },
+        headers: { 'x-api-key': SCRAPECREATORS_API_KEY },
       });
       const data = await res.json();
       if (!data.success && !Array.isArray(data.searchResults)) {
@@ -145,7 +155,8 @@ export async function onRequestGet({ request, env }) {
   }
 
   // Provider 3: official Meta ads_archive
-  if (env.META_ACCESS_TOKEN) {
+  const META_ACCESS_TOKEN = getEnv(env, 'META_ACCESS_TOKEN');
+  if (META_ACCESS_TOKEN) {
     const api = new URL('https://graph.facebook.com/v21.0/ads_archive');
     api.searchParams.set('search_terms', q);
     api.searchParams.set('ad_reached_countries', JSON.stringify([country]));
@@ -156,7 +167,7 @@ export async function onRequestGet({ request, env }) {
       'fields',
       'id,page_id,page_name,ad_creative_bodies,ad_creative_link_titles,ad_creative_link_descriptions,ad_delivery_start_time,ad_delivery_stop_time,ad_snapshot_url,publisher_platforms'
     );
-    api.searchParams.set('access_token', env.META_ACCESS_TOKEN);
+    api.searchParams.set('access_token', META_ACCESS_TOKEN);
     try {
       const res = await fetch(api.toString());
       const data = await res.json();
@@ -167,5 +178,5 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  return json({ error: 'not_configured' });
+  return json({ error: 'not_configured', env_keys_seen: Object.keys(env) });
 }

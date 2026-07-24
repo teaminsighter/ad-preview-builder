@@ -1,9 +1,12 @@
 'use client';
 
+import AdMedia from './AdMedia';
+
 interface TikTokFeedAdProps {
   username: string;
   caption: string;
   imageUrl: string;
+  mediaKind?: 'image' | 'video';
   ctaText: string;
   profileImageUrl?: string;
   musicName?: string;
@@ -13,6 +16,7 @@ export default function TikTokFeedAd({
   username,
   caption,
   imageUrl,
+  mediaKind,
   ctaText,
   profileImageUrl,
   musicName = 'Original Sound',
@@ -22,7 +26,7 @@ export default function TikTokFeedAd({
       {/* Video/Image Background */}
       <div className="absolute inset-0">
         {imageUrl ? (
-          <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+          <AdMedia url={imageUrl} kind={mediaKind} alt="" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
             <svg className="w-16 h-16 text-gray-600" fill="currentColor" viewBox="0 0 24 24">

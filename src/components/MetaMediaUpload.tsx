@@ -5,8 +5,9 @@ import {
   MetaPlacement,
   MediaKind,
   MediaVerdict,
+  PlacementSpec,
   META_SPECS,
-  validateMedia,
+  validateMediaSpec,
   formatRatio,
   formatDuration,
   looksLikeVideoUrl,
@@ -16,7 +17,10 @@ interface MetaMediaUploadProps {
   value: string;
   kind: MediaKind;
   onChange: (url: string, kind: MediaKind) => void;
-  placement: MetaPlacement;
+  // Either a Meta placement (specs looked up) or an explicit spec (TikTok, Bing)
+  placement?: MetaPlacement;
+  customSpec?: PlacementSpec;
+  imageOnly?: boolean;
   label: string;
 }
 
@@ -30,7 +34,7 @@ interface Probe {
 // Single media slot mirroring Ads Manager's "Uploaded media" tiles: accepts
 // images and videos, probes real dimensions/duration and grades the file
 // against the selected placement's spec ("Optimised" / "Not optimised").
-export default function MetaMediaUpload({ value, kind, onChange, placement, label }: MetaMediaUploadProps) {
+export default function MetaMediaUpload({ value, kind, onChange, placement, customSpec, imageOnly, label }: MetaMediaUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [probe, setProbe] = useState<Probe | null>(null);
@@ -38,7 +42,8 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
   const [showIssues, setShowIssues] = useState(false);
   const bytesRef = useRef<number | undefined>(undefined);
 
-  const isVideo = kind === 'video' || looksLikeVideoUrl(value);
+  const isVideo = !imageOnly && (kind === 'video' || looksLikeVideoUrl(value));
+  const placementSpec = customSpec ?? META_SPECS[placement ?? 'fb-feed'];
 
   // Probe dimensions/duration whenever the media changes
   useEffect(() => {
@@ -54,7 +59,7 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
         if (cancelled) return;
         const info = { width: v.videoWidth, height: v.videoHeight, durationSec: v.duration, bytes: bytesRef.current };
         setProbe(info);
-        setVerdict(validateMedia(placement, 'video', info));
+        setVerdict(validateMediaSpec(placementSpec.video, 'video', info));
       };
       v.src = value;
     } else {
@@ -63,17 +68,18 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
         if (cancelled) return;
         const info = { width: img.naturalWidth, height: img.naturalHeight, bytes: bytesRef.current };
         setProbe(info);
-        setVerdict(validateMedia(placement, 'image', info));
+        setVerdict(validateMediaSpec(placementSpec.image, 'image', info));
       };
       img.src = value;
     }
     return () => { cancelled = true; };
-  }, [value, isVideo, placement]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, isVideo, placement, customSpec]);
 
   const handleFileChange = (file: File | null) => {
     if (!file) return;
     bytesRef.current = file.size;
-    if (file.type.startsWith('video/')) {
+    if (file.type.startsWith('video/') && !imageOnly) {
       // Videos stay as object URLs — data URLs of large videos would blow the
       // localStorage quota. They preview fine but aren't restored next session.
       onChange(URL.createObjectURL(file), 'video');
@@ -100,7 +106,7 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
     if (e.dataTransfer.files?.[0]) handleFileChange(e.dataTransfer.files[0]);
   };
 
-  const spec = META_SPECS[placement][isVideo ? 'video' : 'image'];
+  const spec = placementSpec[isVideo ? 'video' : 'image'];
 
   return (
     <div>
@@ -117,7 +123,7 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept={imageOnly ? 'image/*' : 'image/*,video/*'}
           onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
           className="hidden"
         />
@@ -162,7 +168,7 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, labe
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
             <span className="text-xs font-medium">{label}</span>
-            <span className="text-[10px] text-gray-400 mt-0.5">Image or video · {spec.recommendedResolution}</span>
+            <span className="text-[10px] text-gray-400 mt-0.5">{imageOnly ? 'Image' : 'Image or video'} · {spec.recommendedResolution}</span>
           </div>
         )}
       </div>

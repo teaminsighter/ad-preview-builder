@@ -21,16 +21,20 @@ import InstagramStoryAd from '@/components/previews/InstagramStoryAd';
 import InstagramReelsAd from '@/components/previews/InstagramReelsAd';
 import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
 import TikTokFeedAd from '@/components/previews/TikTokFeedAd';
-import LinkedInFeedAd from '@/components/previews/LinkedInFeedAd';
+import BingSearchAd from '@/components/previews/BingSearchAd';
+import BingAudienceAd from '@/components/previews/BingAudienceAd';
 import ImageUpload from '@/components/ImageUpload';
 import MetaMediaUpload from '@/components/MetaMediaUpload';
 import { META_SPECS, META_TEXT_LIMITS, CAROUSEL_SPEC, MediaKind, looksLikeVideoUrl } from '@/lib/metaSpecs';
+import { TIKTOK_SPEC, TIKTOK_TEXT_LIMITS, TIKTOK_MIN_BITRATE, TIKTOK_CTAS } from '@/lib/tiktokSpecs';
+import { BING_RSA, BING_AUDIENCE, BING_AUDIENCE_IMAGE } from '@/lib/bingSpecs';
 import { encodeShareData, decodeShareData, downscaleImage } from '@/lib/shareLink';
 
-type Platform = 'google' | 'meta' | 'tiktok' | 'linkedin' | 'utm' | 'library';
+type Platform = 'google' | 'meta' | 'tiktok' | 'bing' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover' | 'shopping';
 type GoogleCampaignType = 'pmax' | 'search' | 'demand-gen' | 'video' | 'display' | 'shopping';
 type MetaAdType = 'fb-feed' | 'fb-stories' | 'ig-feed' | 'ig-stories' | 'ig-reels';
+type BingAdType = 'search' | 'audience';
 
 // UTM Parameter presets
 const utmSourceOptions = ['google', 'facebook', 'instagram', 'twitter', 'linkedin', 'email', 'newsletter', 'bing', 'youtube', 'tiktok'];
@@ -157,6 +161,26 @@ export default function Home() {
   const [googleCampaignType, setGoogleCampaignType] = useState<GoogleCampaignType>('search');
   const [googleAdType, setGoogleAdType] = useState<GoogleAdType>('search');
   const [metaAdType, setMetaAdType] = useState<MetaAdType>('fb-feed');
+  const [bingAdType, setBingAdType] = useState<BingAdType>('search');
+
+  // Microsoft Advertising (Bing) state — RSA + Audience Network
+  const [bingFinalUrl, setBingFinalUrl] = useState('');
+  const [bingPath1, setBingPath1] = useState('');
+  const [bingPath2, setBingPath2] = useState('');
+  const [bingHeadlines, setBingHeadlines] = useState<string[]>(Array(BING_RSA.headlineCount).fill(''));
+  const [bingDescriptions, setBingDescriptions] = useState<string[]>(Array(BING_RSA.descriptionCount).fill(''));
+  const [visibleBingHeadlines, setVisibleBingHeadlines] = useState(3);
+  const [visibleBingDescriptions, setVisibleBingDescriptions] = useState(2);
+  const [bingBusinessName, setBingBusinessName] = useState('');
+  const [bingShortHeadline, setBingShortHeadline] = useState('');
+  const [bingLongHeadline, setBingLongHeadline] = useState('');
+  const [bingText, setBingText] = useState('');
+  const [bingImageUrl, setBingImageUrl] = useState('');
+
+  // TikTok state — dedicated media slot (video-first) and CTA
+  const [tiktokMediaUrl, setTiktokMediaUrl] = useState('');
+  const [tiktokMediaKind, setTiktokMediaKind] = useState<MediaKind>('video');
+  const [tiktokCta, setTiktokCta] = useState('Learn More');
 
   // Switch campaign type; snap the ad format to one the campaign supports
   const selectCampaignType = (id: GoogleCampaignType) => {
@@ -556,6 +580,8 @@ export default function Home() {
       data.productImageUrl = await downscaleImage(data.productImageUrl);
       data.imageUrl = await downscaleImage(data.imageUrl);
       data.metaImageUrl = await downscaleImage(data.metaImageUrl);
+      data.tiktokMediaUrl = data.tiktokMediaKind === 'video' ? data.tiktokMediaUrl : await downscaleImage(data.tiktokMediaUrl);
+      data.bingImageUrl = await downscaleImage(data.bingImageUrl);
       const payload: Record<string, unknown> = { ...data };
       // Google campaign builders keep their data in their own stores — carry
       // the selected builder's saved data along so the recipient can open it
@@ -626,6 +652,22 @@ export default function Home() {
     headline,
     description,
     metaImageUrl: metaImageUrl.startsWith('blob:') ? '' : metaImageUrl,
+    // TikTok
+    tiktokMediaUrl: tiktokMediaUrl.startsWith('blob:') ? '' : tiktokMediaUrl,
+    tiktokMediaKind,
+    tiktokCta,
+    // Microsoft Advertising (Bing)
+    bingAdType,
+    bingFinalUrl,
+    bingPath1,
+    bingPath2,
+    bingHeadlines,
+    bingDescriptions,
+    bingBusinessName,
+    bingShortHeadline,
+    bingLongHeadline,
+    bingText,
+    bingImageUrl,
     // Meta Ads
     metaAdName,
     partnershipAd,
@@ -676,6 +718,8 @@ export default function Home() {
 
   // Load ad data from object
   const loadAdData = (data: Record<string, unknown>) => {
+    // LinkedIn was replaced by Microsoft Ads — map old saves to the new tab
+    if (data.platform === 'linkedin') data.platform = 'bing';
     if (data.platform) setPlatform(data.platform as Platform);
     if (data.googleCampaignType) {
       setGoogleCampaignType(data.googleCampaignType as GoogleCampaignType);
@@ -718,6 +762,20 @@ export default function Home() {
     if (data.headline) setHeadline(data.headline as string);
     if (data.description) setDescription(data.description as string);
     if (data.metaImageUrl) setMetaImageUrl(data.metaImageUrl as string);
+    if (data.tiktokMediaUrl) setTiktokMediaUrl(data.tiktokMediaUrl as string);
+    if (data.tiktokMediaKind) setTiktokMediaKind(data.tiktokMediaKind as MediaKind);
+    if (data.tiktokCta) setTiktokCta(data.tiktokCta as string);
+    if (data.bingAdType) setBingAdType(data.bingAdType as BingAdType);
+    if (data.bingFinalUrl) setBingFinalUrl(data.bingFinalUrl as string);
+    if (data.bingPath1) setBingPath1(data.bingPath1 as string);
+    if (data.bingPath2) setBingPath2(data.bingPath2 as string);
+    if (data.bingHeadlines) setBingHeadlines(data.bingHeadlines as string[]);
+    if (data.bingDescriptions) setBingDescriptions(data.bingDescriptions as string[]);
+    if (data.bingBusinessName) setBingBusinessName(data.bingBusinessName as string);
+    if (data.bingShortHeadline) setBingShortHeadline(data.bingShortHeadline as string);
+    if (data.bingLongHeadline) setBingLongHeadline(data.bingLongHeadline as string);
+    if (data.bingText) setBingText(data.bingText as string);
+    if (data.bingImageUrl) setBingImageUrl(data.bingImageUrl as string);
     if (data.metaAdName) setMetaAdName(data.metaAdName as string);
     if (data.partnershipAd !== undefined) setPartnershipAd(data.partnershipAd as boolean);
     if (data.pageName) setPageName(data.pageName as string);
@@ -1238,7 +1296,10 @@ export default function Home() {
       advantagePlusCreative, textGeneration, optimizeTextPerPerson, lifecycleStrategy,
       productTitle, productPrice, productStore, productImageUrl, productRating,
       productReviewCount, productShipping,
-      imageUrl, logoUrl, ctaText, displaySize, username, caption, headline, description, metaImageUrl]);
+      imageUrl, logoUrl, ctaText, displaySize, username, caption, headline, description, metaImageUrl,
+      tiktokMediaUrl, tiktokMediaKind, tiktokCta,
+      bingAdType, bingFinalUrl, bingPath1, bingPath2, bingHeadlines, bingDescriptions,
+      bingBusinessName, bingShortHeadline, bingLongHeadline, bingText, bingImageUrl]);
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {
@@ -2688,74 +2749,110 @@ export default function Home() {
     );
   };
 
-  // TikTok Editor
+  // TikTok Editor — mirrors TikTok Ads Manager's ad-level flow (2026 specs)
   const renderTikTokEditor = () => {
     return (
       <div className="space-y-6">
-        {/* Profile Section */}
+        {/* Identity */}
         <div>
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Profile</h3>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Identity</h3>
           <div className="space-y-3">
             <div>
-              <label className="text-sm text-gray-700 mb-1 block">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="@yourusername"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-              />
+              <label className="text-sm text-gray-700 mb-1 block">Display name</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="yourbrand"
+                  maxLength={TIKTOK_TEXT_LIMITS.displayNameMax}
+                  className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                    username.length > 0 && username.length < TIKTOK_TEXT_LIMITS.displayNameMin ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                />
+                <span className="text-xs text-gray-400 w-12 text-right">{username.length}/{TIKTOK_TEXT_LIMITS.displayNameMax}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">{TIKTOK_TEXT_LIMITS.displayNameMin}–{TIKTOK_TEXT_LIMITS.displayNameMax} characters</p>
             </div>
             <ImageUpload
               value={pageImageUrl}
               onChange={setPageImageUrl}
-              label="Profile Picture"
+              label="Profile picture"
               aspectRatio="1:1"
             />
           </div>
         </div>
 
-        {/* Content Section */}
+        {/* Video / media */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Ad Content</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-700 mb-1 block">Caption</label>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Your TikTok ad caption..."
-                rows={3}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none"
-              />
-              <span className={`text-xs ${caption.length > 150 ? 'text-red-500' : 'text-gray-400'}`}>
-                {caption.length}/150 recommended
-              </span>
-            </div>
-            <ImageUpload
-              value={metaImageUrl}
-              onChange={setMetaImageUrl}
-              label="Video Thumbnail / Image"
-              aspectRatio="9:16"
-            />
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Video</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-1 mb-3">
+            <p className="font-semibold">TikTok In-Feed — recommended media</p>
+            <p>Video: {TIKTOK_SPEC.video.recommendedResolution} · {TIKTOK_SPEC.video.ratioLabel}</p>
+            <p>{TIKTOK_SPEC.video.fileTypes.join('/')} · max {TIKTOK_SPEC.video.maxFileMB} MB · {TIKTOK_SPEC.video.minDurationSec}–{TIKTOK_SPEC.video.maxDurationSec} s (sweet spot {TIKTOK_SPEC.video.sweetSpot})</p>
+            <p>Bitrate: minimum {TIKTOK_MIN_BITRATE}</p>
+            {TIKTOK_SPEC.safeZone && <p>Safe zone: {TIKTOK_SPEC.safeZone}</p>}
+          </div>
+          <MetaMediaUpload
+            label="Ad video"
+            value={tiktokMediaUrl}
+            kind={tiktokMediaKind}
+            customSpec={TIKTOK_SPEC}
+            onChange={(url, kind) => {
+              setTiktokMediaUrl(url);
+              setTiktokMediaKind(kind);
+            }}
+          />
+        </div>
+
+        {/* Ad text */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Ad text</h3>
+          <textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Your ad text (shows as the caption)"
+            rows={3}
+            maxLength={TIKTOK_TEXT_LIMITS.adTextMax}
+            className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+              caption.length >= TIKTOK_TEXT_LIMITS.adTextMax ? 'border-red-300 bg-red-50' : caption.length > 80 ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300'
+            }`}
+          />
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-xs text-gray-400">Emojis and hashtags count towards the limit</span>
+            <span className={`text-xs font-medium ${
+              caption.length >= TIKTOK_TEXT_LIMITS.adTextMax ? 'text-red-500' : caption.length > 80 ? 'text-yellow-600' : 'text-gray-400'
+            }`}>{caption.length}/{TIKTOK_TEXT_LIMITS.adTextMax}</span>
           </div>
         </div>
 
-        {/* CTA Section */}
+        {/* CTA */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Call to Action</h3>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Call to action</h3>
           <select
-            value={metaCtaText}
-            onChange={(e) => setMetaCtaText(e.target.value)}
+            value={tiktokCta}
+            onChange={(e) => setTiktokCta(e.target.value)}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
           >
-            <option value="Learn More">Learn More</option>
-            <option value="Shop Now">Shop Now</option>
-            <option value="Sign Up">Sign Up</option>
-            <option value="Download">Download</option>
-            <option value="Contact Us">Contact Us</option>
-            <option value="Watch More">Watch More</option>
+            {TIKTOK_CTAS.map((cta) => (
+              <option key={cta} value={cta} className="text-gray-900">{cta}</option>
+            ))}
           </select>
+        </div>
+
+        {/* Placement note */}
+        <div className="border-t border-gray-200 pt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+              </svg>
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">Previewing: TikTok In-Feed ad</p>
+                <p className="text-xs text-blue-600 mt-1">{TIKTOK_SPEC.textNotes}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -2767,127 +2864,262 @@ export default function Home() {
       <TikTokFeedAd
         username={username || 'username'}
         caption={caption}
-        imageUrl={metaImageUrl}
-        ctaText={metaCtaText}
+        imageUrl={tiktokMediaUrl || metaImageUrl}
+        mediaKind={tiktokMediaKind}
+        ctaText={tiktokCta}
         profileImageUrl={pageImageUrl}
       />
     );
   };
 
-  // LinkedIn Editor
-  const renderLinkedInEditor = () => {
+  // Microsoft Advertising (Bing) Editor — RSA + Audience Network (2026 specs)
+  const renderBingEditor = () => {
+    if (bingAdType === 'audience') {
+      return (
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 space-y-1">
+            <p className="font-semibold">Microsoft Audience Network — native ads on MSN, Outlook.com and Edge</p>
+            <p>Image: {BING_AUDIENCE_IMAGE.recommendedResolution} · {BING_AUDIENCE_IMAGE.ratioLabel}</p>
+            <p>{BING_AUDIENCE_IMAGE.fileTypes.join('/')} · max {BING_AUDIENCE_IMAGE.maxFileMB} MB · minimum {BING_AUDIENCE_IMAGE.minWidth} × {BING_AUDIENCE_IMAGE.minHeight} px</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Image</h3>
+            <MetaMediaUpload
+              label="Audience ad image"
+              value={bingImageUrl}
+              kind="image"
+              imageOnly
+              customSpec={{
+                label: 'Microsoft Audience Network',
+                image: BING_AUDIENCE_IMAGE,
+                video: BING_AUDIENCE_IMAGE,
+                textNotes: '',
+              }}
+              onChange={(url) => setBingImageUrl(url)}
+            />
+          </div>
+
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-medium text-gray-900">Ad copy</h3>
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Short headline</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={bingShortHeadline}
+                  onChange={(e) => setBingShortHeadline(e.target.value)}
+                  placeholder="Short headline"
+                  maxLength={BING_AUDIENCE.shortHeadlineMax}
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <span className="text-xs text-gray-400 w-12 text-right">{bingShortHeadline.length}/{BING_AUDIENCE.shortHeadlineMax}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Long headline</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={bingLongHeadline}
+                  onChange={(e) => setBingLongHeadline(e.target.value)}
+                  placeholder="Long headline"
+                  maxLength={BING_AUDIENCE.longHeadlineMax}
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <span className="text-xs text-gray-400 w-12 text-right">{bingLongHeadline.length}/{BING_AUDIENCE.longHeadlineMax}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Ad text</label>
+              <div className="flex items-start gap-2">
+                <textarea
+                  value={bingText}
+                  onChange={(e) => setBingText(e.target.value)}
+                  placeholder="Ad text"
+                  rows={2}
+                  maxLength={BING_AUDIENCE.adTextMax}
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                />
+                <span className="text-xs text-gray-400 w-12 text-right pt-2">{bingText.length}/{BING_AUDIENCE.adTextMax}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-700 mb-1 block">Business name</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={bingBusinessName}
+                  onChange={(e) => setBingBusinessName(e.target.value)}
+                  placeholder="Your business"
+                  maxLength={BING_AUDIENCE.businessNameMax}
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <span className="text-xs text-gray-400 w-12 text-right">{bingBusinessName.length}/{BING_AUDIENCE.businessNameMax}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Responsive search ad on the Bing SERP
+    const filledBingHeadlines = bingHeadlines.filter(h => h.trim()).length;
+    const filledBingDescriptions = bingDescriptions.filter(d => d.trim()).length;
     return (
       <div className="space-y-6">
-        {/* Company Section */}
         <div>
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Company Profile</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-700 mb-1 block">Company Name</label>
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
+            Final URL <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="url"
+            value={bingFinalUrl}
+            onChange={(e) => setBingFinalUrl(e.target.value)}
+            placeholder="https://example.com/landing-page"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+          />
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Display path</label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">{(bingFinalUrl.replace(/^https?:\/\//, '').split('/')[0]) || 'example.com'} /</span>
               <input
                 type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="Your Company Name"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                value={bingPath1}
+                onChange={(e) => setBingPath1(e.target.value)}
+                placeholder="path1"
+                maxLength={BING_RSA.pathMax}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               />
-            </div>
-            <ImageUpload
-              value={logoUrl}
-              onChange={setLogoUrl}
-              label="Company Logo"
-              aspectRatio="1:1"
-            />
-          </div>
-        </div>
-
-        {/* Content Section */}
-        <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Ad Content</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-700 mb-1 block">Intro Text</label>
-              <textarea
-                value={primaryText}
-                onChange={(e) => setPrimaryText(e.target.value)}
-                placeholder="Share your professional message..."
-                rows={3}
-                className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
-                  primaryText.length > 600 ? 'border-red-300 bg-red-50' : primaryText.length > 500 ? 'border-yellow-300 bg-yellow-50' : ''
-                }`}
-              />
-              <span className={`text-xs ${primaryText.length > 600 ? 'text-red-500' : primaryText.length > 500 ? 'text-yellow-500' : 'text-gray-400'}`}>
-                {primaryText.length}/600 characters
-              </span>
-            </div>
-            <div>
-              <label className="text-sm text-gray-700 mb-1 block">Headline</label>
+              <span className="text-gray-400">/</span>
               <input
                 type="text"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                placeholder="Your attention-grabbing headline"
-                maxLength={200}
-                className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
-                  headline.length > 150 ? 'border-yellow-300 bg-yellow-50' : ''
-                }`}
-              />
-              <span className={`text-xs ${headline.length > 150 ? 'text-yellow-500' : 'text-gray-400'}`}>
-                {headline.length}/200 characters
-              </span>
-            </div>
-            <ImageUpload
-              value={imageUrl}
-              onChange={setImageUrl}
-              label="Ad Image"
-              aspectRatio="1.91:1"
-            />
-            <div>
-              <label className="text-sm text-gray-700 mb-1 block">Destination URL</label>
-              <input
-                type="url"
-                value={linkDisplay}
-                onChange={(e) => setLinkDisplay(e.target.value)}
-                placeholder="company.com/landing-page"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                value={bingPath2}
+                onChange={(e) => setBingPath2(e.target.value)}
+                placeholder="path2"
+                maxLength={BING_RSA.pathMax}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
           </div>
         </div>
 
-        {/* CTA Section */}
+        {/* Headlines */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-3">Call to Action</h3>
-          <select
-            value={ctaText}
-            onChange={(e) => setCtaText(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 bg-white"
-          >
-            <option value="Learn more">Learn more</option>
-            <option value="Sign up">Sign up</option>
-            <option value="Subscribe">Subscribe</option>
-            <option value="Register">Register</option>
-            <option value="Download">Download</option>
-            <option value="Get quote">Get quote</option>
-            <option value="Apply now">Apply now</option>
-            <option value="Contact us">Contact us</option>
-          </select>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-900">Headlines ({BING_RSA.headlineMax} chars max)</h3>
+            <span className="text-xs text-gray-500">{filledBingHeadlines}/{BING_RSA.headlineCount} added · min {BING_RSA.headlineMin}</span>
+          </div>
+          <div className="space-y-3">
+            {bingHeadlines.slice(0, visibleBingHeadlines).map((h, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="text-sm text-gray-400 w-5">{i + 1}</span>
+                <input
+                  type="text"
+                  value={h}
+                  onChange={(e) => {
+                    const next = [...bingHeadlines];
+                    next[i] = e.target.value;
+                    setBingHeadlines(next);
+                  }}
+                  placeholder={`Headline ${i + 1}${i < BING_RSA.headlineMin ? ' *' : ''}`}
+                  maxLength={BING_RSA.headlineMax}
+                  className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${
+                    i < BING_RSA.headlineMin ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                  } ${h.length >= BING_RSA.headlineMax ? 'border-red-300 bg-red-50' : ''}`}
+                />
+                <span className={`text-xs w-10 text-right font-medium ${
+                  h.length >= BING_RSA.headlineMax ? 'text-red-500' : h.length >= 20 ? 'text-green-500' : 'text-gray-400'
+                }`}>{h.length}/{BING_RSA.headlineMax}</span>
+              </div>
+            ))}
+            {visibleBingHeadlines < BING_RSA.headlineCount && (
+              <button
+                onClick={() => setVisibleBingHeadlines(Math.min(visibleBingHeadlines + 3, BING_RSA.headlineCount))}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add more headlines
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Descriptions */}
+        <div className="border-t border-gray-200 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-900">Descriptions ({BING_RSA.descriptionMax} chars max)</h3>
+            <span className="text-xs text-gray-500">{filledBingDescriptions}/{BING_RSA.descriptionCount} added · min {BING_RSA.descriptionMin}</span>
+          </div>
+          <div className="space-y-3">
+            {bingDescriptions.slice(0, visibleBingDescriptions).map((d, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <span className="text-sm text-gray-400 w-5 pt-2">{i + 1}</span>
+                <textarea
+                  value={d}
+                  onChange={(e) => {
+                    const next = [...bingDescriptions];
+                    next[i] = e.target.value;
+                    setBingDescriptions(next);
+                  }}
+                  placeholder={`Description ${i + 1}${i < BING_RSA.descriptionMin ? ' *' : ''}`}
+                  rows={2}
+                  maxLength={BING_RSA.descriptionMax}
+                  className={`flex-1 px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm resize-none ${
+                    i < BING_RSA.descriptionMin ? 'border-blue-200 bg-blue-50/50' : 'border-gray-300'
+                  }`}
+                />
+                <span className="text-xs w-10 text-right font-medium text-gray-400 pt-2">{d.length}/{BING_RSA.descriptionMax}</span>
+              </div>
+            ))}
+            {visibleBingDescriptions < BING_RSA.descriptionCount && (
+              <button
+                onClick={() => setVisibleBingDescriptions(Math.min(visibleBingDescriptions + 1, BING_RSA.descriptionCount))}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add another description
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-800">
+              Microsoft responsive search ads mix and match your headlines and descriptions, showing up to 3 headlines and 2 descriptions per impression — the same model as Google RSAs. You can import Google Ads campaigns directly in Microsoft Advertising.
+            </p>
+          </div>
         </div>
       </div>
     );
   };
 
-  // LinkedIn Preview
-  const renderLinkedInPreview = () => {
+  // Bing Preview
+  const renderBingPreview = () => {
+    if (bingAdType === 'audience') {
+      return (
+        <BingAudienceAd
+          imageUrl={bingImageUrl}
+          shortHeadline={bingShortHeadline}
+          longHeadline={bingLongHeadline}
+          adText={bingText}
+          businessName={bingBusinessName}
+        />
+      );
+    }
     return (
-      <LinkedInFeedAd
-        companyName={businessName || 'Company Name'}
-        companyLogoUrl={logoUrl}
-        headline={headline}
-        introText={primaryText}
-        imageUrl={imageUrl}
-        ctaText={ctaText}
-        websiteUrl={linkDisplay}
+      <BingSearchAd
+        headlines={bingHeadlines}
+        descriptions={bingDescriptions}
+        displayUrl={(bingFinalUrl.replace(/^https?:\/\//, '').split('/')[0]) || ''}
+        path1={bingPath1}
+        path2={bingPath2}
+        businessName={bingBusinessName}
       />
     );
   };
@@ -3428,7 +3660,7 @@ export default function Home() {
             <div>
               <h1 className="text-2xl font-bold gradient-text">Ad Preview</h1>
               <p className="text-gray-600 text-sm mt-1">
-                {platform === 'meta' ? 'Meta Ads' : platform === 'google' ? 'Google Ads' : platform === 'tiktok' ? 'TikTok' : 'LinkedIn'} preview shared with you
+                {platform === 'meta' ? 'Meta Ads' : platform === 'google' ? 'Google Ads' : platform === 'tiktok' ? 'TikTok' : 'Microsoft Ads'} preview shared with you
                 {metaAdName && platform === 'meta' ? ` · ${metaAdName}` : ''}
               </p>
             </div>
@@ -3457,6 +3689,26 @@ export default function Home() {
                   onClick={() => setMetaAdType(type.id)}
                   className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
                     metaAdType === type.id
+                      ? 'btn-gradient text-white shadow-lg glow'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </nav>
+          )}
+          {platform === 'bing' && (
+            <nav className="flex gap-2 pb-4 items-center justify-center">
+              {([
+                { id: 'search' as BingAdType, label: 'Search (Bing SERP)' },
+                { id: 'audience' as BingAdType, label: 'Audience Network' },
+              ]).map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setBingAdType(type.id)}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
+                    bingAdType === type.id
                       ? 'btn-gradient text-white shadow-lg glow'
                       : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md'
                   }`}
@@ -3506,7 +3758,7 @@ export default function Home() {
                platform === 'google' ? renderGooglePreview() :
                platform === 'meta' ? renderMetaPreview() :
                platform === 'tiktok' ? renderTikTokPreview() :
-               renderLinkedInPreview()}
+               renderBingPreview()}
             </div>
           </div>
           <p className="text-center text-xs text-white/70 mt-6">
@@ -3729,17 +3981,20 @@ export default function Home() {
               <span className="badge-new">New</span>
             </button>
             <button
-              onClick={() => setPlatform('linkedin')}
+              onClick={() => setPlatform('bing')}
               className={`px-6 py-4 text-sm font-semibold transition-all duration-300 flex items-center gap-2 relative tab-indicator ${
-                platform === 'linkedin'
+                platform === 'bing'
                   ? 'text-indigo-600 active'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill={platform === 'linkedin' ? '#0A66C2' : '#9CA3AF'}>
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <rect x="1" y="1" width="10.5" height="10.5" fill={platform === 'bing' ? '#F25022' : '#9CA3AF'}/>
+                <rect x="12.5" y="1" width="10.5" height="10.5" fill={platform === 'bing' ? '#7FBA00' : '#B3B8C1'}/>
+                <rect x="1" y="12.5" width="10.5" height="10.5" fill={platform === 'bing' ? '#00A4EF' : '#B3B8C1'}/>
+                <rect x="12.5" y="12.5" width="10.5" height="10.5" fill={platform === 'bing' ? '#FFB900' : '#9CA3AF'}/>
               </svg>
-              LinkedIn
+              Microsoft Ads
               <span className="badge-new">New</span>
             </button>
             <button
@@ -3827,6 +4082,32 @@ export default function Home() {
         </div>
       )}
 
+      {/* Sub Tabs (Microsoft Ads formats) */}
+      {platform === 'bing' && (
+        <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4">
+            <nav className="flex gap-2 overflow-x-auto py-3 items-center">
+              {([
+                { id: 'search' as BingAdType, label: 'Search (Bing SERP)' },
+                { id: 'audience' as BingAdType, label: 'Audience Network' },
+              ]).map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => setBingAdType(type.id)}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
+                    bingAdType === type.id
+                      ? 'btn-gradient text-white shadow-lg glow'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-10">
         {platform === 'library' ? (
@@ -3869,7 +4150,7 @@ export default function Home() {
               {platform === 'google' ? renderGoogleEditor() :
                platform === 'meta' ? renderMetaEditor() :
                platform === 'tiktok' ? renderTikTokEditor() :
-               platform === 'linkedin' ? renderLinkedInEditor() :
+               platform === 'bing' ? renderBingEditor() :
                renderUtmEditor()}
             </div>
 
@@ -3928,7 +4209,7 @@ export default function Home() {
                 {platform === 'google' ? renderGooglePreview() :
                  platform === 'meta' ? renderMetaPreview() :
                  platform === 'tiktok' ? renderTikTokPreview() :
-                 platform === 'linkedin' ? renderLinkedInPreview() :
+                 platform === 'bing' ? renderBingPreview() :
                  renderUtmPreview()}
               </div>
             </div>

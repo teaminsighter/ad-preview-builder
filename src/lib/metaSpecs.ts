@@ -14,6 +14,9 @@ export interface MediaSpec {
   minHeight: number;
   fileTypes: string[];
   maxFileMB: number;
+  // Short-edge resolution below which delivery quality suffers.
+  // Defaults to 1080; set to 0 to disable the warning (e.g. Bing images).
+  qualityFloor?: number;
   // Video only
   minDurationSec?: number;
   maxDurationSec?: number;
@@ -198,7 +201,11 @@ export interface MediaVerdict {
 
 // Validate probed media against a placement's spec. Ratio tolerance ±3% (Meta's own tolerance).
 export function validateMedia(placement: MetaPlacement, kind: MediaKind, info: MediaInfo): MediaVerdict {
-  const spec = META_SPECS[placement][kind];
+  return validateMediaSpec(META_SPECS[placement][kind], kind, info);
+}
+
+// Spec-agnostic validation, reused by the TikTok and Bing spec libraries
+export function validateMediaSpec(spec: MediaSpec, kind: MediaKind, info: MediaInfo): MediaVerdict {
   const issues: string[] = [];
   const ratio = info.width / info.height;
 
@@ -207,10 +214,11 @@ export function validateMedia(placement: MetaPlacement, kind: MediaKind, info: M
     issues.push(`Aspect ratio ${formatRatio(info.width, info.height)} — this placement expects ${spec.ratioLabel}. Meta will crop or letterbox it.`);
   }
 
+  const qualityFloor = spec.qualityFloor ?? 1080;
   if (info.width < spec.minWidth || info.height < spec.minHeight) {
     issues.push(`Resolution ${info.width} × ${info.height} px is below the ${spec.minWidth} × ${spec.minHeight} px minimum.`);
-  } else if (Math.min(info.width, info.height) < 1080) {
-    issues.push(`Short edge under 1080 px — Meta's quality model may deprioritise delivery and raise CPM. Recommended: ${spec.recommendedResolution}.`);
+  } else if (qualityFloor > 0 && Math.min(info.width, info.height) < qualityFloor) {
+    issues.push(`Short edge under ${qualityFloor} px — the platform may deprioritise low-resolution creative. Recommended: ${spec.recommendedResolution}.`);
   }
 
   if (info.bytes !== undefined && info.bytes > spec.maxFileMB * 1024 * 1024) {

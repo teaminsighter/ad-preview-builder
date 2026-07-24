@@ -26,14 +26,20 @@ const getEnv = (env, name) => {
 // SerpApi region codes = 2000 + ISO 3166-1 numeric
 const SERPAPI_REGIONS = { NZ: '2554', AU: '2036', US: '2840', GB: '2826', CA: '2124', IE: '2372' };
 
+const toDate = (d) => {
+  if (!d) return undefined;
+  if (typeof d === 'number') return new Date(d * (d < 1e12 ? 1000 : 1)).toISOString().slice(0, 10);
+  return String(d).slice(0, 10);
+};
+
 const mapCreative = (a) => ({
   advertiser: (a.advertiser && (a.advertiser.name || a.advertiser)) || undefined,
   format: a.format,
   image: a.image || a.thumbnail || undefined,
   link: a.link,
   details_link: a.details_link,
-  first_shown: a.first_shown || a.first_shown_datetime,
-  last_shown: a.last_shown || a.last_shown_datetime,
+  first_shown: toDate(a.first_shown || a.first_shown_datetime),
+  last_shown: toDate(a.last_shown || a.last_shown_datetime),
   target_domain: a.target_domain,
 });
 

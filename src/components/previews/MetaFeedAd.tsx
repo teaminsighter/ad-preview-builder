@@ -7,6 +7,13 @@ import { META_TEXT_LIMITS } from '@/lib/metaSpecs';
 // the container edge (the preview card is wider than a phone column)
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() + '…' : s);
 
+// Width-based cuts observed in the real mobile feed (tighter than the
+// documented 30-char description guidance)
+const MOBILE_DOMAIN_CHARS = 25;
+const MOBILE_DESC_CHARS = 24;
+// Desktop feed is wider and shows more primary text before "See more"
+const DESKTOP_PRIMARY_CHARS = 200;
+
 interface CarouselCard {
   url: string;
   kind?: 'image' | 'video';
@@ -86,10 +93,11 @@ export default function MetaFeedAd({
       <div className="px-3 pb-2">
         {(() => {
           const pt = primaryText || 'Your primary text here. This is where you write your main message to engage your audience.';
-          const cut = pt.length > META_TEXT_LIMITS.primaryVisible;
+          const visible = desktop ? DESKTOP_PRIMARY_CHARS : META_TEXT_LIMITS.primaryVisible;
+          const cut = pt.length > visible;
           return (
             <p className="text-sm text-gray-800 whitespace-pre-wrap">
-              {cut ? pt.slice(0, META_TEXT_LIMITS.primaryVisible).trimEnd() : pt}
+              {cut ? pt.slice(0, visible).trimEnd() : pt}
               {cut && <span className="text-gray-500"> …see more</span>}
             </p>
           );
@@ -134,13 +142,19 @@ export default function MetaFeedAd({
           {/* Link band — display link, headline, description with CTA on the right */}
           <div className="px-3 py-2.5 bg-gray-100 border-t border-gray-200 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-gray-500 uppercase truncate">{linkDisplay || 'example.com'}</p>
+              {/* Mobile shows the domain lowercase and truncated; desktop
+                  shows it uppercase in full */}
+              <p className="text-xs text-gray-500 truncate">
+                {desktop
+                  ? (linkDisplay || 'example.com').toUpperCase()
+                  : clip((linkDisplay || 'example.com').toLowerCase(), MOBILE_DOMAIN_CHARS)}
+              </p>
               <p className={`font-semibold text-gray-900 text-sm ${desktop ? '' : 'line-clamp-1'}`}>
                 {desktop ? (headline || 'Your Headline Here') : clip(headline || 'Your Headline Here', META_TEXT_LIMITS.headlineVisibleFeed)}
               </p>
               {description && (
                 <p className={`text-sm text-gray-500 ${desktop ? '' : 'line-clamp-1'}`}>
-                  {desktop ? description : clip(description, META_TEXT_LIMITS.descriptionVisible)}
+                  {desktop ? description : clip(description, MOBILE_DESC_CHARS)}
                 </p>
               )}
             </div>

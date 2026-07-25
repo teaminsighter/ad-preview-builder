@@ -731,9 +731,17 @@ export default function Home() {
       const uploadBlobVideo = async (blobUrl: string): Promise<string> => {
         try {
           const blob = await (await fetch(blobUrl)).blob();
+          // Content hash lets the server dedupe: re-sharing the same video
+          // reuses the stored copy instead of uploading a new one.
+          const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+          const hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
           const res = await fetch('/api/upload-media', {
             method: 'POST',
-            headers: { 'content-type': blob.type || 'video/mp4', ...(authToken ? { 'x-auth': authToken } : {}) },
+            headers: {
+              'content-type': blob.type || 'video/mp4',
+              'x-media-hash': hash,
+              ...(authToken ? { 'x-auth': authToken } : {}),
+            },
             body: blob,
           });
           const out = await res.json().catch(() => null);

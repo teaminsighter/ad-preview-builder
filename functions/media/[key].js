@@ -18,7 +18,7 @@ const parseRange = (header) => {
 export async function onRequestGet({ params, env, request }) {
   if (!env.MEDIA) return new Response('Not configured', { status: 404 });
   const key = String(params.key || '');
-  if (!/^[a-f0-9-]{36}\.[a-z0-9]{1,8}$/.test(key)) return new Response('Not found', { status: 404 });
+  if (!/^([a-f0-9-]{36}|[a-f0-9]{64})\.[a-z0-9]{1,8}$/.test(key)) return new Response('Not found', { status: 404 });
 
   const range = parseRange(request.headers.get('range'));
   let object;

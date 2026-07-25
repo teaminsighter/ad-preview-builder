@@ -48,9 +48,14 @@ export async function onRequestPost({ request, env }) {
   }
 
   const ext = EXT[type] || type.split('/')[1].replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
-  const key = `${crypto.randomUUID()}.${ext}`;
+  // Key by content hash (sent by the client) so re-sharing the same video
+  // reuses the stored object instead of adding a duplicate.
+  const hash = (request.headers.get('x-media-hash') || '').toLowerCase();
+  const key = /^[a-f0-9]{64}$/.test(hash) ? `${hash}.${ext}` : `${crypto.randomUUID()}.${ext}`;
   try {
-    await env.MEDIA.put(key, request.body, { httpMetadata: { contentType: type } });
+    if (!(await env.MEDIA.head(key))) {
+      await env.MEDIA.put(key, request.body, { httpMetadata: { contentType: type } });
+    }
   } catch (e) {
     return json({ error: 'storage_failed', message: e && e.message ? e.message : 'R2 write failed' }, 502);
   }

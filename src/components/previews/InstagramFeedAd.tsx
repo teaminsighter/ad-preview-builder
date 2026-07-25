@@ -103,12 +103,19 @@ export default function InstagramFeedAd({
         </button>
       </div>
 
-      {/* Caption */}
+      {/* Caption — Instagram cuts at ~125 chars with "… more" */}
       <div className="px-3 pb-3">
-        <p className="text-sm">
-          <span className="font-semibold">{username}</span>{' '}
-          <span className="text-gray-800 whitespace-pre-wrap">{caption || 'Your caption here...'}</span>
-        </p>
+        {(() => {
+          const cap = caption || 'Your caption here...';
+          const cut = cap.length > 125;
+          return (
+            <p className="text-sm">
+              <span className="font-semibold">{username}</span>{' '}
+              <span className="text-gray-800 whitespace-pre-wrap">{cut ? cap.slice(0, 125).trimEnd() : cap}</span>
+              {cut && <span className="text-gray-400"> … more</span>}
+            </p>
+          );
+        })()}
       </div>
     </div>
   );

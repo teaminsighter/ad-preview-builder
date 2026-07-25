@@ -42,6 +42,8 @@ export const META_TEXT_LIMITS = {
   primaryMax: 2200,
   headlineRecommended: 40,
   headlineMax: 255,
+  // Characters visible in the mobile feed before Meta cuts with "…"
+  headlineVisibleFeed: 27,
   descriptionVisible: 30,
   adNameMax: 400,
 };

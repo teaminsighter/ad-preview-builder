@@ -1,6 +1,11 @@
 'use client';
 
 import AdMedia from './AdMedia';
+import { META_TEXT_LIMITS } from '@/lib/metaSpecs';
+
+// Truncate the way the real Meta feed does — at a character count, not at
+// the container edge (the preview card is wider than a phone column)
+const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() + '…' : s);
 
 interface CarouselCard {
   url: string;
@@ -72,11 +77,18 @@ export default function MetaFeedAd({
         </button>
       </div>
 
-      {/* Primary Text */}
+      {/* Primary Text — cut at 125 chars with "…see more" like the real feed */}
       <div className="px-3 pb-2">
-        <p className="text-sm text-gray-800 whitespace-pre-wrap">
-          {primaryText || 'Your primary text here. This is where you write your main message to engage your audience.'}
-        </p>
+        {(() => {
+          const pt = primaryText || 'Your primary text here. This is where you write your main message to engage your audience.';
+          const cut = pt.length > META_TEXT_LIMITS.primaryVisible;
+          return (
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+              {cut ? pt.slice(0, META_TEXT_LIMITS.primaryVisible).trimEnd() : pt}
+              {cut && <span className="text-gray-500"> …see more</span>}
+            </p>
+          );
+        })()}
       </div>
 
       {isCarousel ? (
@@ -89,7 +101,7 @@ export default function MetaFeedAd({
               </div>
               <div className="px-2 py-2 bg-gray-50 flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 text-xs truncate">{headline || 'Your Headline Here'}</p>
+                  <p className="font-semibold text-gray-900 text-xs truncate">{clip(headline || 'Your Headline Here', META_TEXT_LIMITS.headlineVisibleFeed)}</p>
                   <p className="text-[11px] text-gray-500 truncate">{linkDisplay || 'example.com'}</p>
                 </div>
                 <button className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-2.5 rounded text-xs">
@@ -118,8 +130,8 @@ export default function MetaFeedAd({
           <div className="px-3 py-2.5 bg-gray-100 border-t border-gray-200 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-gray-500 uppercase truncate">{linkDisplay || 'example.com'}</p>
-              <p className="font-semibold text-gray-900 text-sm line-clamp-1">{headline || 'Your Headline Here'}</p>
-              {description && <p className="text-sm text-gray-500 line-clamp-1">{description}</p>}
+              <p className="font-semibold text-gray-900 text-sm line-clamp-1">{clip(headline || 'Your Headline Here', META_TEXT_LIMITS.headlineVisibleFeed)}</p>
+              {description && <p className="text-sm text-gray-500 line-clamp-1">{clip(description, META_TEXT_LIMITS.descriptionVisible)}</p>}
             </div>
             <button className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1.5 px-3 rounded text-sm">
               {ctaText}

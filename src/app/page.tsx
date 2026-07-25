@@ -19,6 +19,7 @@ import InstagramFeedAd from '@/components/previews/InstagramFeedAd';
 import InstagramStoryAd from '@/components/previews/InstagramStoryAd';
 import InstagramReelsAd from '@/components/previews/InstagramReelsAd';
 import FacebookStoriesAd from '@/components/previews/FacebookStoriesAd';
+import MetaAllPlacements from '@/components/previews/MetaAllPlacements';
 import TikTokFeedAd from '@/components/previews/TikTokFeedAd';
 import BingSearchAd from '@/components/previews/BingSearchAd';
 import BingAudienceAd from '@/components/previews/BingAudienceAd';
@@ -190,6 +191,9 @@ export default function Home() {
   const [googleCampaignType, setGoogleCampaignType] = useState<GoogleCampaignType>('search');
   const [googleAdType, setGoogleAdType] = useState<GoogleAdType>('search');
   const [metaAdType, setMetaAdType] = useState<MetaAdType>('fb-feed');
+  // Ads Manager-style view: 'all' shows every placement in a grid; picking a
+  // specific placement shows the single large preview (and drives media specs)
+  const [metaView, setMetaView] = useState<'all' | MetaAdType>('all');
   const [bingAdType, setBingAdType] = useState<BingAdType>('search');
 
   // Microsoft Advertising (Bing) state — RSA + Audience Network
@@ -3666,30 +3670,66 @@ export default function Home() {
     // Placement customisation (like Meta's): among the uploaded media, pick the
     // one whose aspect ratio best fits this placement — 9:16 media serves
     // Stories/Reels, 4:5 / 1:1 media serves Feed.
-    const isVertical = metaAdType === 'fb-stories' || metaAdType === 'ig-stories' || metaAdType === 'ig-reels';
-    const targetRatio = isVertical ? 9 / 16 : 4 / 5;
     const filledMedia = metaMediaUrls.map((url, i) => ({ url, i })).filter(m => m.url);
-    let bestMediaIndex = filledMedia.length ? filledMedia[0].i : -1;
-    let bestScore = Infinity;
-    filledMedia.forEach(({ i }) => {
-      const r = metaMediaRatios[i];
-      // Unknown ratios rank last; otherwise distance in log-space (symmetric for crops)
-      const score = r === null ? 999 : Math.abs(Math.log(r / targetRatio));
-      if (score < bestScore - 1e-9) {
-        bestScore = score;
-        bestMediaIndex = i;
-      }
-    });
-    const displayImageUrl = bestMediaIndex >= 0 ? metaMediaUrls[bestMediaIndex] : metaImageUrl;
-    const displayMediaKind: MediaKind = bestMediaIndex >= 0
-      ? metaMediaKinds[bestMediaIndex]
-      : looksLikeVideoUrl(displayImageUrl) ? 'video' : 'image';
+    const pickBest = (targetRatio: number) => {
+      let best = filledMedia.length ? filledMedia[0].i : -1;
+      let bestScore = Infinity;
+      filledMedia.forEach(({ i }) => {
+        const r = metaMediaRatios[i];
+        // Unknown ratios rank last; otherwise distance in log-space (symmetric for crops)
+        const score = r === null ? 999 : Math.abs(Math.log(r / targetRatio));
+        if (score < bestScore - 1e-9) {
+          bestScore = score;
+          best = i;
+        }
+      });
+      return best;
+    };
+    const mediaAt = (idx: number): { url?: string; kind?: MediaKind } => {
+      const url = idx >= 0 ? metaMediaUrls[idx] : metaImageUrl;
+      const kind: MediaKind = idx >= 0
+        ? metaMediaKinds[idx]
+        : looksLikeVideoUrl(url) ? 'video' : 'image';
+      return { url: url || undefined, kind };
+    };
     // Carousel cards: all filled media, in order
     const carouselCards = metaFormat === 'carousel'
       ? metaMediaUrls
           .map((url, i) => ({ url, kind: metaMediaKinds[i] }))
           .filter(card => card.url)
       : undefined;
+
+    // Ads Manager-style "All placements" grid
+    if (metaView === 'all') {
+      return (
+        <div className="w-full">
+          <MetaAllPlacements
+            pageName={pageName}
+            username={displayUsername}
+            pageImageUrl={pageImageUrl}
+            primaryText={primaryTexts[0] || primaryText}
+            caption={displayCaption}
+            headline={displayHeadline}
+            description={metaDescription || description}
+            ctaText={metaCtaText}
+            linkDisplay={linkDisplay}
+            feedMedia={mediaAt(pickBest(4 / 5))}
+            verticalMedia={mediaAt(pickBest(9 / 16))}
+            carouselCards={carouselCards}
+          />
+          <p className="mt-6 text-[10px] text-gray-400 text-center">
+            Ad rendering and interaction may vary based on device, format and other factors.
+          </p>
+        </div>
+      );
+    }
+
+    const isVertical = metaAdType === 'fb-stories' || metaAdType === 'ig-stories' || metaAdType === 'ig-reels';
+    const bestMediaIndex = pickBest(isVertical ? 9 / 16 : 4 / 5);
+    const displayImageUrl = bestMediaIndex >= 0 ? metaMediaUrls[bestMediaIndex] : metaImageUrl;
+    const displayMediaKind: MediaKind = bestMediaIndex >= 0
+      ? metaMediaKinds[bestMediaIndex]
+      : looksLikeVideoUrl(displayImageUrl) ? 'video' : 'image';
 
     const placement = (() => {
       switch (metaAdType) {
@@ -3805,12 +3845,12 @@ export default function Home() {
         <main className="max-w-3xl mx-auto px-4 py-10">
           {platform === 'meta' && (
             <nav className="flex gap-2 overflow-x-auto pb-4 items-center justify-center">
-              {metaAdTypes.map((type) => (
+              {([{ id: 'all' as const, label: 'All placements' }, ...metaAdTypes]).map((type) => (
                 <button
                   key={type.id}
-                  onClick={() => setMetaAdType(type.id)}
+                  onClick={() => { setMetaView(type.id); if (type.id !== 'all') setMetaAdType(type.id); }}
                   className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
-                    metaAdType === type.id
+                    metaView === type.id
                       ? 'btn-gradient text-white shadow-lg glow'
                       : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md'
                   }`}
@@ -4182,12 +4222,12 @@ export default function Home() {
         <div className="bg-white/50 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4">
             <nav className="flex gap-2 overflow-x-auto py-3 items-center">
-              {metaAdTypes.map((type) => (
+              {([{ id: 'all' as const, label: 'All placements' }, ...metaAdTypes]).map((type) => (
                 <button
                   key={type.id}
-                  onClick={() => setMetaAdType(type.id)}
+                  onClick={() => { setMetaView(type.id); if (type.id !== 'all') setMetaAdType(type.id); }}
                   className={`px-5 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-300 ${
-                    metaAdType === type.id
+                    metaView === type.id
                       ? 'btn-gradient text-white shadow-lg glow'
                       : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 hover:shadow-md card-hover'
                   }`}

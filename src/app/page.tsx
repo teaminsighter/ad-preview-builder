@@ -716,14 +716,36 @@ export default function Home() {
   };
 
   // Build a shareable preview link: compress the whole ad into the URL hash
-  // and copy it to the clipboard. Uploaded images are shrunk to fit; videos
-  // (blob URLs) can't travel in a link and are dropped with a notice.
+  // and copy it to the clipboard. Uploaded images are shrunk to fit; uploaded
+  // videos are stored in R2 and referenced by URL (dropped if R2 is absent).
   const shareAdPreview = async () => {
     if (shareState === 'busy') return;
     setShareState('busy');
     try {
       const data = { ...getAdData() };
-      const hadVideo = metaMediaUrls.some((u, i) => u && (metaMediaKinds[i] === 'video' || u.startsWith('blob:')));
+      // Blob videos can't travel inside a link — upload each to R2 via
+      // /api/upload-media and share the permanent /media/<key> URL instead.
+      // If the bucket isn't configured or an upload fails, that video is
+      // dropped from the link as before.
+      let videosDropped = false;
+      const uploadBlobVideo = async (blobUrl: string): Promise<string> => {
+        try {
+          const blob = await (await fetch(blobUrl)).blob();
+          const res = await fetch('/api/upload-media', {
+            method: 'POST',
+            headers: { 'content-type': blob.type || 'video/mp4', ...(authToken ? { 'x-auth': authToken } : {}) },
+            body: blob,
+          });
+          const out = await res.json().catch(() => null);
+          if (res.ok && out?.url) return out.url as string;
+        } catch { /* fall through to drop */ }
+        videosDropped = true;
+        return '';
+      };
+      data.metaMediaUrls = await Promise.all(
+        metaMediaUrls.map(u => (u.startsWith('blob:') ? uploadBlobVideo(u) : Promise.resolve(u)))
+      );
+      if (tiktokMediaUrl.startsWith('blob:')) data.tiktokMediaUrl = await uploadBlobVideo(tiktokMediaUrl);
       data.pageImageUrl = await downscaleImage(data.pageImageUrl, 160, 0.7);
       data.businessLogoUrl = await downscaleImage(data.businessLogoUrl, 160, 0.7);
       data.logoUrl = await downscaleImage(data.logoUrl, 160, 0.7);
@@ -752,7 +774,7 @@ export default function Home() {
       setShareState('copied');
       setTimeout(() => setShareState('idle'), 2500);
       const notes: string[] = [];
-      if (hadVideo) notes.push('Videos cannot be included in share links — the preview will use your other media.');
+      if (videosDropped) notes.push('Some videos could not be uploaded for sharing — the preview will use your other media. (Is the MEDIA R2 bucket configured?)');
       if (url.length > 12000) notes.push('The link embeds your uploaded images, so it is long — paste it directly into a browser, email or doc rather than chat apps. Tip: media added via image URLs keeps links short.');
       if (notes.length) alert(`Share link copied!\n\n${notes.join('\n\n')}`);
     } catch (error) {

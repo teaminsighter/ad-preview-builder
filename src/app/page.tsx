@@ -194,6 +194,9 @@ export default function Home() {
   // Ads Manager-style view: 'all' shows every placement in a grid; picking a
   // specific placement shows the single large preview (and drives media specs)
   const [metaView, setMetaView] = useState<'all' | MetaAdType>('all');
+  // Feed preview device: mobile truncates text like a phone, desktop shows
+  // full text and pillarboxes vertical media — mirroring Meta's View preview
+  const [metaDevice, setMetaDevice] = useState<'mobile' | 'desktop'>('mobile');
   const [bingAdType, setBingAdType] = useState<BingAdType>('search');
 
   // Microsoft Advertising (Bing) state — RSA + Audience Network
@@ -3734,7 +3737,7 @@ export default function Home() {
     const placement = (() => {
       switch (metaAdType) {
         case 'fb-feed':
-          return <MetaFeedAd pageName={pageName} primaryText={primaryTexts[0] || primaryText} headline={displayHeadline} description={metaDescription || description} imageUrl={displayImageUrl} mediaKind={displayMediaKind} carouselCards={carouselCards} ctaText={metaCtaText} linkDisplay={linkDisplay} pageImageUrl={pageImageUrl} />;
+          return <MetaFeedAd pageName={pageName} primaryText={primaryTexts[0] || primaryText} headline={displayHeadline} description={metaDescription || description} imageUrl={displayImageUrl} mediaKind={displayMediaKind} carouselCards={carouselCards} ctaText={metaCtaText} linkDisplay={linkDisplay} pageImageUrl={pageImageUrl} device={metaDevice} />;
         case 'fb-stories':
           return <FacebookStoriesAd pageName={pageName} pageImageUrl={pageImageUrl} imageUrl={displayImageUrl} mediaKind={displayMediaKind} headline={displayHeadline} ctaText={metaCtaText} linkDisplay={linkDisplay} />;
         case 'ig-feed':
@@ -3757,7 +3760,24 @@ export default function Home() {
             <span className="text-sm font-semibold text-gray-800">Ad preview</span>
             <span className="text-xs text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-0.5">{spec.label}</span>
           </div>
-          <span className="text-[11px] text-gray-400">{metaFormat === 'carousel' ? 'Carousel' : 'Single image or video'}</span>
+          <div className="flex items-center gap-2">
+            {metaAdType === 'fb-feed' && (
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                {(['mobile', 'desktop'] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setMetaDevice(d)}
+                    className={`px-2.5 py-1 transition-colors ${
+                      metaDevice === d ? 'bg-blue-50 text-blue-600' : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {d === 'mobile' ? 'Mobile' : 'Desktop'}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="text-[11px] text-gray-400">{metaFormat === 'carousel' ? 'Carousel' : 'Single image or video'}</span>
+          </div>
         </div>
         <div className="flex justify-center">{placement}</div>
         <div className="mt-3 space-y-1 text-center">

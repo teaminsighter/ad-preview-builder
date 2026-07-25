@@ -26,6 +26,9 @@ interface MetaFeedAdProps {
   // Header line under the page name — "Sponsored" in feed, "Ad · Not
   // connected to you" in the profile-feed placement
   sponsoredNote?: string;
+  // Desktop feed shows the full headline/description and pillarboxes
+  // vertical media; mobile truncates at Meta's visible character limits
+  device?: 'mobile' | 'desktop';
 }
 
 export default function MetaFeedAd({
@@ -40,11 +43,13 @@ export default function MetaFeedAd({
   ctaText = 'Learn More',
   linkDisplay = 'example.com',
   sponsoredNote = 'Sponsored',
+  device = 'mobile',
 }: MetaFeedAdProps) {
   const isCarousel = carouselCards && carouselCards.length >= 2;
+  const desktop = device === 'desktop';
 
   return (
-    <div className="bg-white rounded-lg shadow-md max-w-[500px] w-[380px] font-sans">
+    <div className={`bg-white rounded-lg shadow-md font-sans ${desktop ? 'w-[500px] max-w-full' : 'max-w-[500px] w-[380px]'}`}>
       {/* Header */}
       <div className="p-3 flex items-center gap-2">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center overflow-hidden">
@@ -113,10 +118,10 @@ export default function MetaFeedAd({
         </div>
       ) : (
         <>
-          {/* Media — Meta recommends 4:5 for feed */}
-          <div className="aspect-[4/5] bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
+          {/* Media — mobile crops to 4:5; desktop pillarboxes on black */}
+          <div className={`aspect-[4/5] relative overflow-hidden ${desktop && imageUrl ? 'bg-black' : 'bg-gradient-to-br from-gray-200 to-gray-300'}`}>
             {imageUrl ? (
-              <AdMedia url={imageUrl} kind={mediaKind} />
+              <AdMedia url={imageUrl} kind={mediaKind} className={`w-full h-full ${desktop ? 'object-contain' : 'object-cover'}`} />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">
                 <svg className="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
@@ -130,8 +135,14 @@ export default function MetaFeedAd({
           <div className="px-3 py-2.5 bg-gray-100 border-t border-gray-200 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs text-gray-500 uppercase truncate">{linkDisplay || 'example.com'}</p>
-              <p className="font-semibold text-gray-900 text-sm line-clamp-1">{clip(headline || 'Your Headline Here', META_TEXT_LIMITS.headlineVisibleFeed)}</p>
-              {description && <p className="text-sm text-gray-500 line-clamp-1">{clip(description, META_TEXT_LIMITS.descriptionVisible)}</p>}
+              <p className={`font-semibold text-gray-900 text-sm ${desktop ? '' : 'line-clamp-1'}`}>
+                {desktop ? (headline || 'Your Headline Here') : clip(headline || 'Your Headline Here', META_TEXT_LIMITS.headlineVisibleFeed)}
+              </p>
+              {description && (
+                <p className={`text-sm text-gray-500 ${desktop ? '' : 'line-clamp-1'}`}>
+                  {desktop ? description : clip(description, META_TEXT_LIMITS.descriptionVisible)}
+                </p>
+              )}
             </div>
             <button className="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1.5 px-3 rounded text-sm">
               {ctaText}

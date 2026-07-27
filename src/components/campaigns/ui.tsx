@@ -31,7 +31,7 @@ export async function nodeToPngDataUrl(
   return canvas.toDataURL('image/png');
 }
 
-// Download a preview node as a PNG
+// Download a preview node as a PNG or PDF
 export function DownloadPreviewButton({
   targetRef,
   filename,
@@ -39,16 +39,33 @@ export function DownloadPreviewButton({
   targetRef: React.RefObject<HTMLDivElement | null>;
   filename: string;
 }) {
-  const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle');
-  const handleDownload = async () => {
-    if (!targetRef.current || state === 'busy') return;
-    setState('busy');
+  const [state, setState] = useState<'idle' | 'png' | 'pdf' | 'failed'>('idle');
+  const handleDownload = async (format: 'png' | 'pdf') => {
+    if (!targetRef.current || state === 'png' || state === 'pdf') return;
+    setState(format);
     try {
       const dataUrl = await nodeToPngDataUrl(targetRef.current);
-      const link = document.createElement('a');
-      link.download = `${filename}-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      if (format === 'png') {
+        const link = document.createElement('a');
+        link.download = `${filename}-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } else {
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Failed to load preview image'));
+          img.src = dataUrl;
+        });
+        const { jsPDF } = await import('jspdf');
+        const pdf = new jsPDF({
+          orientation: img.width > img.height ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [img.width, img.height],
+        });
+        pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+        pdf.save(`${filename}-${Date.now()}.pdf`);
+      }
       setState('idle');
     } catch (error) {
       console.error('Preview export failed:', error);
@@ -56,21 +73,37 @@ export function DownloadPreviewButton({
       setTimeout(() => setState('idle'), 2500);
     }
   };
+  const busy = state === 'png' || state === 'pdf';
+  const btnCls = `flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-white border rounded-lg disabled:opacity-50 transition-colors ${
+    state === 'failed' ? 'text-red-600 border-red-300' : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+  }`;
   return (
-    <button
-      type="button"
-      onClick={handleDownload}
-      disabled={state === 'busy'}
-      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-white border rounded-lg disabled:opacity-50 transition-colors ${
-        state === 'failed' ? 'text-red-600 border-red-300' : 'text-gray-600 border-gray-200 hover:bg-gray-50'
-      }`}
-      title="Download preview as PNG"
-    >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      {state === 'busy' ? 'Saving…' : state === 'failed' ? 'Failed' : 'PNG'}
-    </button>
+    <div className="flex gap-1.5">
+      <button
+        type="button"
+        onClick={() => handleDownload('png')}
+        disabled={busy}
+        className={btnCls}
+        title="Download preview as PNG"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        {state === 'png' ? 'Saving…' : state === 'failed' ? 'Failed' : 'PNG'}
+      </button>
+      <button
+        type="button"
+        onClick={() => handleDownload('pdf')}
+        disabled={busy}
+        className={btnCls}
+        title="Download preview as PDF"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        {state === 'pdf' ? 'Saving…' : 'PDF'}
+      </button>
+    </div>
   );
 }
 

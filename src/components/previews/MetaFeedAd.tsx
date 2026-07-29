@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import AdMedia from './AdMedia';
 import { META_TEXT_LIMITS } from '@/lib/metaSpecs';
 
@@ -54,6 +55,8 @@ export default function MetaFeedAd({
 }: MetaFeedAdProps) {
   const isCarousel = carouselCards && carouselCards.length >= 2;
   const desktop = device === 'desktop';
+  // Like the real feed, tapping "See more" expands the primary text in place
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div className={`bg-white rounded-lg shadow-md font-sans ${desktop ? 'w-[500px] max-w-full' : 'max-w-[500px] w-[380px]'}`}>
@@ -89,16 +92,23 @@ export default function MetaFeedAd({
         </button>
       </div>
 
-      {/* Primary Text — cut at 125 chars with "…see more" like the real feed */}
+      {/* Primary Text — cut at 125 chars with a tappable "See more" like the real feed */}
       <div className="px-3 pb-2">
         {(() => {
           const pt = primaryText || 'Your primary text here. This is where you write your main message to engage your audience.';
           const visible = desktop ? DESKTOP_PRIMARY_CHARS : META_TEXT_LIMITS.primaryVisible;
-          const cut = pt.length > visible;
+          const cut = !expanded && pt.length > visible;
           return (
             <p className="text-sm text-gray-800 whitespace-pre-wrap">
               {cut ? pt.slice(0, visible).trimEnd() : pt}
-              {cut && <span className="text-gray-500"> …see more</span>}
+              {cut && (
+                <span
+                  className="text-gray-500 cursor-pointer hover:underline"
+                  onClick={() => setExpanded(true)}
+                >
+                  {' '}…See more
+                </span>
+              )}
             </p>
           );
         })()}

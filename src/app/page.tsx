@@ -299,6 +299,13 @@ export default function Home() {
   const [collabInfo, setCollabInfo] = useState<{ lastEditor: string | null; editCount: number } | null>(null);
   const [collabLoadError, setCollabLoadError] = useState('');
 
+  // Editable links created from this browser (id + url + label), persisted in
+  // localStorage so the owner can copy or delete them later. Deleting removes
+  // the stored copy from R2, killing the link for everyone.
+  const [editableLinks, setEditableLinks] = useState<{ id: string; url: string; name: string; at: number }[]>([]);
+  const [manageLinksOpen, setManageLinksOpen] = useState(false);
+  const [deletingLinkId, setDeletingLinkId] = useState('');
+
   // The Google Sheet this ad was auto-filled from (if any). Travels inside
   // editable share links so collab saves can write edits back to the source
   // sheet — that needs the sheet shared with Editor access.
@@ -847,6 +854,18 @@ export default function Home() {
       if (!res.ok || !out?.id) throw new Error(out?.message || out?.error || 'create_failed');
       const url = `${window.location.origin}${window.location.pathname}#e=${out.id}`;
       await navigator.clipboard.writeText(url);
+      // Remember the link so it can be copied again or deleted later
+      const entry = {
+        id: out.id as string,
+        url,
+        name: metaAdName || headlines.find(Boolean) || metaHeadlines.find(Boolean) || pageName || businessName || 'Untitled ad',
+        at: Date.now(),
+      };
+      setEditableLinks((prev) => {
+        const next = [entry, ...prev.filter((l) => l.id !== entry.id)].slice(0, 100);
+        localStorage.setItem('adPreviewEditableLinks', JSON.stringify(next));
+        return next;
+      });
       setShareState('copied');
       setTimeout(() => setShareState('idle'), 2500);
       const notes = ['Anyone with this link can EDIT the ad. They enter their email once, and every save is recorded (and synced to your sheet if the webhook is set up).'];
@@ -1473,6 +1492,31 @@ export default function Home() {
     await copyToSheets(rows, 'All Ads');
   };
 
+  // Delete an editable share: removes its stored copy from Cloudflare R2 so
+  // the link stops working for everyone, then forgets it locally.
+  const deleteEditableLink = async (id: string) => {
+    if (deletingLinkId) return;
+    if (!confirm('Delete this editable link?\n\nIts stored copy is removed from Cloudflare and anyone who has the link loses access immediately. The master sheet rows stay as history.')) return;
+    setDeletingLinkId(id);
+    try {
+      const res = await fetch(`/api/shared-ad?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authToken ? { 'x-auth': authToken } : undefined,
+      });
+      const out = await res.json().catch(() => null);
+      if (!res.ok || !out?.ok) throw new Error(out?.message || out?.error || 'delete_failed');
+      setEditableLinks((prev) => {
+        const next = prev.filter((l) => l.id !== id);
+        localStorage.setItem('adPreviewEditableLinks', JSON.stringify(next));
+        return next;
+      });
+    } catch (error) {
+      console.error('Delete link failed:', error);
+      alert('Could not delete the link — this needs the deployed site. Please try again.');
+    }
+    setDeletingLinkId('');
+  };
+
   // Save collab edits back to the server copy (and onwards to the sheet)
   const saveCollabEdits = async () => {
     if (!collabId || !collabEmail || collabSaveState === 'busy') return;
@@ -1648,6 +1692,12 @@ export default function Home() {
       } catch {
         // Ignore errors on auto-load
       }
+    }
+    try {
+      const links = localStorage.getItem('adPreviewEditableLinks');
+      if (links) setEditableLinks(JSON.parse(links));
+    } catch {
+      // Corrupt list — start fresh
     }
   }, []);
 
@@ -4197,6 +4247,62 @@ export default function Home() {
         className="hidden"
       />
 
+      {/* Manage editable share links modal */}
+      {manageLinksOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setManageLinksOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900">Editable links</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Links created on this browser. Deleting removes the stored ad from Cloudflare —
+              the link stops working for everyone immediately. Master-sheet rows stay as history.
+            </p>
+            {editableLinks.length === 0 ? (
+              <p className="text-sm text-gray-400 mt-6 mb-2 text-center">No editable links yet — create one from Share → Editable link.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-gray-100">
+                {editableLinks.map((l) => (
+                  <li key={l.id} className="py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{l.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(l.at).toLocaleString()}</p>
+                    </div>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(l.url); }}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
+                      title="Copy link"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      onClick={() => deleteEditableLink(l.id)}
+                      disabled={deletingLinkId === l.id}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50"
+                      title="Delete from Cloudflare"
+                    >
+                      {deletingLinkId === l.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setManageLinksOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Auto-fill from Google Sheet/Doc modal */}
       {docImportOpen && (
         <div
@@ -4320,6 +4426,13 @@ export default function Home() {
                     >
                       <span className="font-medium">Editable link</span>
                       <span className="block text-xs text-gray-400 mt-0.5">Recipients edit with their email; saves sync to your sheet</span>
+                    </button>
+                    <button
+                      onClick={() => setManageLinksOpen(true)}
+                      className="w-full px-4 py-2.5 text-sm text-left text-gray-700 hover:bg-red-50 border-t border-gray-100"
+                    >
+                      <span className="font-medium">Manage editable links{editableLinks.length ? ` (${editableLinks.length})` : ''}</span>
+                      <span className="block text-xs text-gray-400 mt-0.5">Copy again or delete from Cloudflare storage</span>
                     </button>
                   </div>
                 </div>

@@ -136,6 +136,17 @@ export async function onRequestPost({ request, env }) {
   return json({ id });
 }
 
+// Owner deletes an editable share: removes the stored copy from R2 so the
+// link immediately stops resolving for everyone.
+export async function onRequestDelete({ request, env }) {
+  if (!(await checkAuth(request, env))) return json({ error: 'unauthorized' }, 401);
+  if (!env.MEDIA) return json({ error: 'not_configured', message: 'R2 bucket MEDIA is not bound' }, 501);
+  const id = new URL(request.url).searchParams.get('id') || '';
+  if (!ID_RE.test(id)) return json({ error: 'bad_id' }, 400);
+  await env.MEDIA.delete(key(id));
+  return json({ ok: true });
+}
+
 export async function onRequestPut({ request, env }) {
   if (!env.MEDIA) return json({ error: 'not_configured', message: 'R2 bucket MEDIA is not bound' }, 501);
   if (Number(request.headers.get('content-length') || 0) > MAX_BODY) {

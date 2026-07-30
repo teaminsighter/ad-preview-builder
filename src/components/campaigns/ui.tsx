@@ -298,17 +298,52 @@ export function AdStrength({
   );
 }
 
-// Phone frame wrapper around ad previews (like Google's device mockup).
-// contentWidth is the preview's natural pixel width; content is zoomed to fit the frame.
+// Grey placeholder rows imitating the surrounding app content in Google
+// Ads' official device mockup — the ad sits among skeleton "articles".
+function PhoneSkeletonRows({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="mt-5 space-y-5" aria-hidden>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-gray-200 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-2.5 bg-gray-200 rounded-full w-4/5" />
+            <div className="h-2.5 bg-gray-100 rounded-full w-3/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Phone frame wrapper around ad previews, matching Google Ads' official
+// mockup: a tall fixed-height phone — skeleton content fills the screen
+// below the ad so short ads don't squash the device into a "tablet".
+// contentWidth is the preview's natural pixel width; content is zoomed to fit.
 export function PhoneFrame({ children, contentWidth = 302 }: { children: React.ReactNode; contentWidth?: number }) {
   const zoom = Math.min(1, 302 / contentWidth);
   return (
     <div className="mx-auto w-fit">
       <div className="rounded-[2.2rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl overflow-hidden">
-        <div className="bg-white relative">
+        <div className="bg-white relative flex flex-col h-[620px] w-[330px]">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-gray-900 rounded-b-2xl z-10" />
-          <div className="max-h-[560px] w-[330px] overflow-y-auto overflow-x-hidden pt-7 pb-3 px-[14px]">
-            <div style={{ zoom }}>{children}</div>
+          {/* status bar */}
+          <div className="pt-7 pb-1 px-5 flex items-center justify-between" aria-hidden>
+            <div className="h-2 w-8 bg-gray-200 rounded-full" />
+            <div className="flex gap-1">
+              <div className="h-2 w-2 bg-gray-200 rounded-full" />
+              <div className="h-2 w-2 bg-gray-200 rounded-full" />
+              <div className="h-2 w-4 bg-gray-300 rounded-sm" />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden pb-3 px-[14px]">
+            <PhoneSkeletonRows rows={1} />
+            <div className="mt-4" style={{ zoom }}>{children}</div>
+            <PhoneSkeletonRows rows={5} />
+          </div>
+          {/* home indicator */}
+          <div className="py-1.5 flex justify-center" aria-hidden>
+            <div className="h-1 w-24 bg-gray-300 rounded-full" />
           </div>
         </div>
       </div>

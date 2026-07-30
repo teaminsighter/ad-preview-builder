@@ -12,6 +12,7 @@ import {
   formatDuration,
   looksLikeVideoUrl,
 } from '@/lib/metaSpecs';
+import { driveFileId, driveImageUrl, driveVideoUrl } from '@/lib/driveLink';
 
 interface MetaMediaUploadProps {
   value: string;
@@ -40,6 +41,8 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, cust
   const [probe, setProbe] = useState<Probe | null>(null);
   const [verdict, setVerdict] = useState<MediaVerdict | null>(null);
   const [showIssues, setShowIssues] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
+  const [urlChecking, setUrlChecking] = useState(false);
   const bytesRef = useRef<number | undefined>(undefined);
 
   const isVideo = !imageOnly && (kind === 'video' || looksLikeVideoUrl(value));
@@ -90,6 +93,37 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, cust
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Paste a direct URL or a Google Drive share link. Drive hides the file type
+  // behind the link, so probe as video first (an image fails video-metadata
+  // loading), then fall back to image.
+  const applyUrl = async (raw: string) => {
+    const url = raw.trim();
+    if (!url || urlChecking) return;
+    bytesRef.current = undefined;
+    const id = driveFileId(url);
+    setUrlChecking(true);
+    if (!imageOnly) {
+      const videoUrl = id ? driveVideoUrl(id) : url;
+      const isVideo = await new Promise<boolean>((resolve) => {
+        const v = document.createElement('video');
+        const timer = setTimeout(() => resolve(false), 8000);
+        v.preload = 'metadata';
+        v.onloadedmetadata = () => { clearTimeout(timer); resolve(v.videoWidth > 0); };
+        v.onerror = () => { clearTimeout(timer); resolve(false); };
+        v.src = videoUrl;
+      });
+      if (isVideo) {
+        setUrlChecking(false);
+        setUrlDraft('');
+        onChange(videoUrl, 'video');
+        return;
+      }
+    }
+    setUrlChecking(false);
+    setUrlDraft('');
+    onChange(id ? driveImageUrl(id) : url, 'image');
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -172,6 +206,28 @@ export default function MetaMediaUpload({ value, kind, onChange, placement, cust
           </div>
         )}
       </div>
+
+      {/* Paste URL — direct links or Google Drive share links */}
+      {!value && (
+        <div className="mt-1.5 flex gap-1.5">
+          <input
+            type="url"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') applyUrl(urlDraft); }}
+            placeholder={`Paste ${imageOnly ? 'image' : 'image/video'} URL or Drive link`}
+            className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <button
+            type="button"
+            onClick={() => applyUrl(urlDraft)}
+            disabled={urlChecking || !urlDraft.trim()}
+            className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 disabled:opacity-50 whitespace-nowrap"
+          >
+            {urlChecking ? 'Checking…' : 'Add'}
+          </button>
+        </div>
+      )}
 
       {/* Issue details, expanded from the "Not optimised" badge */}
       {verdict && !verdict.ok && showIssues && (

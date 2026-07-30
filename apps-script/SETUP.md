@@ -56,3 +56,26 @@ launch ads on Google Ads and Meta from rows marked `READY`. No server needed.
 - Errors land in the row's `api_status` as `ERROR: <message>` — fix the row,
   clear `api_status`, keep `status = READY`, and the next run retries.
   (Rows with a non-empty `api_id` are never touched again.)
+
+## 6. Shared-ad edit sync (SharedAdEdits.gs)
+
+Editable share links from the preview builder ("Share > Editable link") save
+each edit back to this spreadsheet.
+
+1. Add `SharedAdEdits.gs` to the same Apps Script project.
+2. Deploy > **New deployment** > type **Web app**:
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+3. Copy the web app URL (`https://script.google.com/macros/s/…/exec`).
+4. Cloudflare dashboard > Workers & Pages > ad-preview-builder > Settings >
+   Environment variables > add `SHEET_WEBHOOK_URL` = that URL (Production),
+   then redeploy.
+
+Resulting tabs (auto-created):
+
+- **Ad Edits** — one row per share link with the latest copy: share id, link,
+  last editor email, last edited time, headlines, descriptions, primary
+  texts, CTA, final URL, page/business name.
+- **Edit Log** — one appended row per save: when, share id, editor email.
+
+If you redeploy the web app, the URL changes — update `SHEET_WEBHOOK_URL`.

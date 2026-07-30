@@ -29,6 +29,7 @@ import { META_SPECS, META_TEXT_LIMITS, CAROUSEL_SPEC, MediaKind, looksLikeVideoU
 import { TIKTOK_SPEC, TIKTOK_TEXT_LIMITS, TIKTOK_MIN_BITRATE, TIKTOK_CTAS } from '@/lib/tiktokSpecs';
 import { BING_RSA, BING_AUDIENCE, BING_AUDIENCE_IMAGE } from '@/lib/bingSpecs';
 import { encodeShareData, decodeShareData, downscaleImage } from '@/lib/shareLink';
+import { parseImportedDoc, parseImportedFile, directSheetCsvUrl } from '@/lib/importDoc';
 
 type Platform = 'google' | 'meta' | 'tiktok' | 'bing' | 'utm' | 'library';
 type GoogleAdType = 'search' | 'display' | 'youtube-instream' | 'youtube-shorts' | 'gmail' | 'discover' | 'shopping';
@@ -288,6 +289,22 @@ export default function Home() {
   // Held here until the recipient explicitly opens it in the builder — only
   // then is it written into their localStorage store.
   const [sharedCampaignStore, setSharedCampaignStore] = useState<{ key: string; value: unknown } | null>(null);
+
+  // Collab mode: opened via an editable #e=<id> share link. Edits are saved
+  // back to the server copy with the editor's email attached.
+  const [collabId, setCollabId] = useState('');
+  const [collabEmail, setCollabEmail] = useState('');
+  const [collabEmailDraft, setCollabEmailDraft] = useState('');
+  const [collabSaveState, setCollabSaveState] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
+  const [collabInfo, setCollabInfo] = useState<{ lastEditor: string | null; editCount: number } | null>(null);
+  const [collabLoadError, setCollabLoadError] = useState('');
+
+  // Auto-fill from a Google Sheet/Doc link or an uploaded file
+  const [docImportOpen, setDocImportOpen] = useState(false);
+  const [docImportUrl, setDocImportUrl] = useState('');
+  const [docImportBusy, setDocImportBusy] = useState(false);
+  const [docImportError, setDocImportError] = useState('');
+  const docFileInputRef = useRef<HTMLInputElement>(null);
 
   // Dark mode removed — it caused white-on-white text with the light-styled
   // components; ensure no stale class lingers from previous sessions
@@ -722,13 +739,12 @@ export default function Home() {
     }
   };
 
-  // Build a shareable preview link: compress the whole ad into the URL hash
-  // and copy it to the clipboard. Uploaded images are shrunk to fit; uploaded
-  // videos are stored in R2 and referenced by URL (dropped if R2 is absent).
-  const shareAdPreview = async () => {
-    if (shareState === 'busy') return;
-    setShareState('busy');
-    try {
+  // Prepare the current ad for travelling outside this browser: uploaded
+  // images are shrunk, blob videos are stored in R2 and referenced by URL
+  // (dropped if R2 is absent). Used by view-only links, editable links and
+  // collab saves alike.
+  const buildSharePayload = async (): Promise<{ payload: Record<string, unknown>; videosDropped: boolean }> => {
+    {
       const data = { ...getAdData() };
       // Blob videos can't travel inside a link — upload each to R2 via
       // /api/upload-media and share the permanent /media/<key> URL instead.
@@ -783,6 +799,16 @@ export default function Home() {
           } catch { /* corrupt store — share without it */ }
         }
       }
+      return { payload, videosDropped };
+    }
+  };
+
+  // View-only link: compress the whole ad into the URL hash — no backend.
+  const shareAdPreview = async () => {
+    if (shareState === 'busy') return;
+    setShareState('busy');
+    try {
+      const { payload, videosDropped } = await buildSharePayload();
       const encoded = await encodeShareData(payload);
       const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`;
       await navigator.clipboard.writeText(url);
@@ -796,6 +822,36 @@ export default function Home() {
       console.error('Share link failed:', error);
       setShareState('failed');
       setTimeout(() => setShareState('idle'), 2500);
+    }
+  };
+
+  // Editable ("collab") link: the ad is stored server-side in R2 and the link
+  // carries only an id — recipients open the full editor, save with their
+  // email, and every save also updates the master Google Sheet.
+  const shareEditableLink = async () => {
+    if (shareState === 'busy') return;
+    setShareState('busy');
+    try {
+      const { payload, videosDropped } = await buildSharePayload();
+      const res = await fetch('/api/shared-ad', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(authToken ? { 'x-auth': authToken } : {}) },
+        body: JSON.stringify({ data: payload }),
+      });
+      const out = await res.json().catch(() => null);
+      if (!res.ok || !out?.id) throw new Error(out?.message || out?.error || 'create_failed');
+      const url = `${window.location.origin}${window.location.pathname}#e=${out.id}`;
+      await navigator.clipboard.writeText(url);
+      setShareState('copied');
+      setTimeout(() => setShareState('idle'), 2500);
+      const notes = ['Anyone with this link can EDIT the ad. They enter their email once, and every save is recorded (and synced to your sheet if the webhook is set up).'];
+      if (videosDropped) notes.push('Some videos could not be uploaded for sharing — the preview will use your other media.');
+      alert(`Editable link copied!\n\n${notes.join('\n\n')}`);
+    } catch (error) {
+      console.error('Editable share failed:', error);
+      setShareState('failed');
+      setTimeout(() => setShareState('idle'), 2500);
+      alert('Could not create the editable link. This needs the deployed site with the MEDIA R2 bucket — try it on adpreview.insighter.digital.');
     }
   };
 
@@ -1410,6 +1466,96 @@ export default function Home() {
     await copyToSheets(rows, 'All Ads');
   };
 
+  // Save collab edits back to the server copy (and onwards to the sheet)
+  const saveCollabEdits = async () => {
+    if (!collabId || !collabEmail || collabSaveState === 'busy') return;
+    setCollabSaveState('busy');
+    try {
+      const { payload } = await buildSharePayload();
+      const res = await fetch('/api/shared-ad', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: collabId, email: collabEmail, data: payload }),
+      });
+      const out = await res.json().catch(() => null);
+      if (!res.ok || !out?.ok) throw new Error(out?.message || out?.error || 'save_failed');
+      setCollabSaveState('saved');
+      setTimeout(() => setCollabSaveState('idle'), 2500);
+      if (out.sheet === 'failed') {
+        alert('Your changes were saved, but updating the Google Sheet failed — the owner may need to check the SHEET_WEBHOOK_URL setup.');
+      }
+    } catch (error) {
+      console.error('Collab save failed:', error);
+      setCollabSaveState('failed');
+      setTimeout(() => setCollabSaveState('idle'), 2500);
+      alert(error instanceof Error && error.message !== 'save_failed' ? error.message : 'Could not save your changes — please try again.');
+    }
+  };
+
+  // Auto-fill from a Google Sheet or Doc link
+  const importFromGoogleDoc = async () => {
+    const link = docImportUrl.trim();
+    if (!link || docImportBusy) return;
+    setDocImportBusy(true);
+    setDocImportError('');
+    try {
+      let kind: 'sheet' | 'doc';
+      let text: string;
+      try {
+        const res = await fetch(`/api/import-doc?url=${encodeURIComponent(link)}`, {
+          headers: authToken ? { 'x-auth': authToken } : undefined,
+        });
+        const payload = await res.json();
+        if (payload.error) {
+          throw Object.assign(new Error(payload.message || payload.error), { friendly: !!payload.message });
+        }
+        kind = payload.kind;
+        text = payload.text;
+      } catch (err) {
+        if ((err as { friendly?: boolean }).friendly) throw err;
+        // No Pages Function here (e.g. local dev) — public Sheets can still be
+        // fetched directly via the CORS-enabled gviz CSV endpoint.
+        const direct = directSheetCsvUrl(link);
+        if (!direct) {
+          throw new Error('Importing a Google Doc needs the deployed site — try adpreview.insighter.digital, or use a Google Sheet link instead.');
+        }
+        const res = await fetch(direct);
+        if (!res.ok) throw new Error('Could not fetch the sheet. Make sure it is shared as “Anyone with the link – Viewer”.');
+        text = await res.text();
+        if (text.trim().startsWith('<')) {
+          throw new Error('The sheet is not public. Open its Share settings and set “Anyone with the link – Viewer”.');
+        }
+        kind = 'sheet';
+      }
+      const { data, filled } = parseImportedDoc(kind, text);
+      loadAdData(data);
+      setDocImportOpen(false);
+      setDocImportUrl('');
+      alert(`Auto-filled from your ${kind === 'sheet' ? 'Sheet' : 'Doc'}:\n\n• ${filled.join('\n• ')}`);
+    } catch (err) {
+      setDocImportError(err instanceof Error ? err.message : 'Import failed — please check the link.');
+    }
+    setDocImportBusy(false);
+  };
+
+  // Auto-fill from an uploaded file (.xlsx / .csv / .tsv / .txt)
+  const importFromDocFile = async (file: File | undefined | null) => {
+    if (!file || docImportBusy) return;
+    setDocImportBusy(true);
+    setDocImportError('');
+    try {
+      const { data, filled } = await parseImportedFile(file);
+      loadAdData(data);
+      setDocImportOpen(false);
+      setDocImportUrl('');
+      alert(`Auto-filled from ${file.name}:\n\n• ${filled.join('\n• ')}`);
+    } catch (err) {
+      setDocImportError(err instanceof Error ? err.message : 'Could not read that file.');
+    }
+    setDocImportBusy(false);
+    if (docFileInputRef.current) docFileInputRef.current.value = '';
+  };
+
   // Import from JSON
   const importFromJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1441,9 +1587,29 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // On mount: a #s=... share link takes priority, otherwise restore localStorage
+  // On mount: #e=... (editable share) and #s=... (view-only share) links take
+  // priority, otherwise restore localStorage
   useEffect(() => {
     const hash = window.location.hash;
+    if (hash.startsWith('#e=')) {
+      const id = hash.slice(3);
+      fetch(`/api/shared-ad?id=${encodeURIComponent(id)}`)
+        .then((res) => res.json())
+        .then((out) => {
+          if (out.error) throw new Error(out.message || out.error);
+          loadAdData(out.data as Record<string, unknown>);
+          setCollabInfo({ lastEditor: out.lastEditor ?? null, editCount: out.editCount ?? 0 });
+          setCollabId(id);
+          const savedEmail = localStorage.getItem('adPreviewEditorEmail') || '';
+          setCollabEmail(savedEmail);
+          setCollabEmailDraft(savedEmail);
+        })
+        .catch((err) => {
+          setCollabLoadError(err instanceof Error ? err.message : 'This editable link could not be loaded.');
+          setCollabId(id);
+        });
+      return;
+    }
     if (hash.startsWith('#s=')) {
       decodeShareData(hash.slice(3))
         .then((data) => {
@@ -1475,13 +1641,13 @@ export default function Home() {
   // Debounced: serialising the draft includes base64 images and can take
   // tens of milliseconds — doing it on every keystroke made typing laggy.
   useEffect(() => {
-    if (sharedView) return;
+    if (sharedView || collabId) return;
     const timer = setTimeout(() => {
       localStorage.setItem('adPreviewData', JSON.stringify(getAdData()));
     }, 700);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharedView, businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
+  }, [sharedView, collabId, businessName, headlines, descriptions, finalUrl, displayUrl, path1, path2,
       sitelinks, callouts, snippetHeader, snippetValues, phoneNumber, priceAssets,
       promotion, searchImageUrls, pageName, instagramAccount, pageImageUrl,
       primaryTexts, metaHeadlines, metaDescription, metaMediaUrls, metaMediaKinds, metaCtaText,
@@ -3799,7 +3965,7 @@ export default function Home() {
 
   // Sign-in gate — full-screen, shown only when APP_PASSWORD is configured.
   // Shared preview links bypass it so recipients can always view them.
-  if (authChecked && authEnabled && !tokenValid(authToken) && !sharedView) {
+  if (authChecked && authEnabled && !tokenValid(authToken) && !sharedView && !collabId) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center px-4">
         <div className="glass rounded-3xl shadow-2xl p-10 w-full max-w-md text-center">
@@ -3826,6 +3992,60 @@ export default function Home() {
             className="w-full py-3 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg transition-all duration-300 disabled:opacity-50"
           >
             {loginBusy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Editable share link failed to load (deleted share, network, missing R2)
+  if (collabId && collabLoadError) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center">
+          <h1 className="text-xl font-bold text-gray-900">This editable link isn&apos;t available</h1>
+          <p className="text-sm text-gray-500 mt-2">{collabLoadError}</p>
+          <p className="text-xs text-gray-400 mt-4">Ask the sender for a fresh link.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Email gate for editable share links: asked once, then remembered on this
+  // device. The email is attached to every save so the owner can see who
+  // changed what.
+  if (collabId && !collabEmail) {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(collabEmailDraft.trim());
+    const submitEmail = () => {
+      if (!emailOk) return;
+      const email = collabEmailDraft.trim().toLowerCase();
+      localStorage.setItem('adPreviewEditorEmail', email);
+      setCollabEmail(email);
+    };
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+          <h1 className="text-xl font-bold gradient-text">Ad Preview — shared for editing</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            You&apos;ve been invited to edit this ad. Enter your email to continue — it&apos;s
+            attached to your changes so the owner knows who edited what. You&apos;ll only be
+            asked once on this device.
+          </p>
+          <input
+            autoFocus
+            type="email"
+            value={collabEmailDraft}
+            onChange={(e) => setCollabEmailDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitEmail(); }}
+            placeholder="you@company.com"
+            className="w-full mt-5 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+          />
+          <button
+            onClick={submitEmail}
+            disabled={!emailOk}
+            className="w-full mt-4 py-3 text-sm font-semibold text-white btn-gradient rounded-xl shadow-lg transition-all duration-300 disabled:opacity-50"
+          >
+            Start editing
           </button>
         </div>
       </div>
@@ -3962,6 +4182,84 @@ export default function Home() {
         className="hidden"
       />
 
+      {/* Auto-fill from Google Sheet/Doc modal */}
+      {docImportOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => { if (!docImportBusy) setDocImportOpen(false); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900">Auto-fill from Google Sheets / Docs</h3>
+            <p className="text-sm text-gray-500 mt-1.5">
+              Paste a link to a Sheet or Doc with your ad copy. Label the content with
+              {' '}<span className="font-medium text-gray-700">Headline 1</span>,
+              {' '}<span className="font-medium text-gray-700">Primary Text</span>,
+              {' '}<span className="font-medium text-gray-700">Description</span>,
+              {' '}<span className="font-medium text-gray-700">CTA</span>,
+              {' '}<span className="font-medium text-gray-700">Final URL</span>,
+              {' '}<span className="font-medium text-gray-700">Image</span>,
+              {' '}<span className="font-medium text-gray-700">Video</span>, etc. —
+              as a header row or a label column in a Sheet, or &ldquo;Label: value&rdquo; lines in a Doc.
+              Image/Video can be Google Drive share links.
+            </p>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+              The file must be shared as &ldquo;Anyone with the link – Viewer&rdquo;.
+            </p>
+            <input
+              autoFocus
+              type="url"
+              value={docImportUrl}
+              onChange={(e) => setDocImportUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') importFromGoogleDoc(); }}
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+              className="w-full mt-4 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 uppercase tracking-wide">or upload a file</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <input
+              type="file"
+              ref={docFileInputRef}
+              accept=".csv,.tsv,.txt,.xlsx,.xls"
+              onChange={(e) => importFromDocFile(e.target.files?.[0])}
+              className="hidden"
+            />
+            <button
+              onClick={() => docFileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); importFromDocFile(e.dataTransfer.files?.[0]); }}
+              disabled={docImportBusy}
+              className="w-full border-2 border-dashed border-gray-300 rounded-xl py-5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors disabled:opacity-50"
+            >
+              <span className="font-medium">Click to choose a file</span> or drag &amp; drop
+              <span className="block text-xs text-gray-400 mt-1">Excel (.xlsx), CSV, TSV or plain text</span>
+            </button>
+            {docImportError && <p className="text-sm text-red-600 mt-2">{docImportError}</p>}
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setDocImportOpen(false)}
+                disabled={docImportBusy}
+                className="px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={importFromGoogleDoc}
+                disabled={docImportBusy || !docImportUrl.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {docImportBusy ? 'Fetching…' : 'Auto-Fill Preview'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="glass shadow-xl border-b border-white/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-5">
@@ -3971,26 +4269,59 @@ export default function Home() {
               <p className="text-gray-600 text-sm mt-1">Preview your ads before publishing to Google Ads & Meta Ads</p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Share preview link */}
+              {/* Share preview link — view-only or editable */}
               {platform !== 'utm' && platform !== 'library' && (
-                <button
-                  onClick={shareAdPreview}
-                  disabled={shareState === 'busy'}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-300 disabled:opacity-60 ${
-                    shareState === 'copied'
-                      ? 'text-green-700 bg-green-50 border-green-300'
-                      : shareState === 'failed'
-                      ? 'text-red-600 bg-white border-red-300'
-                      : 'text-gray-700 bg-white/80 border-gray-200 hover:bg-white hover:shadow-md card-hover'
-                  }`}
-                  title="Copy a shareable preview link"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  {shareState === 'busy' ? 'Copying…' : shareState === 'copied' ? 'Copied!' : shareState === 'failed' ? 'Failed' : 'Share'}
-                </button>
+                <div className="relative group">
+                  <button
+                    disabled={shareState === 'busy'}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border transition-all duration-300 disabled:opacity-60 ${
+                      shareState === 'copied'
+                        ? 'text-green-700 bg-green-50 border-green-300'
+                        : shareState === 'failed'
+                        ? 'text-red-600 bg-white border-red-300'
+                        : 'text-gray-700 bg-white/80 border-gray-200 hover:bg-white hover:shadow-md card-hover'
+                    }`}
+                    title="Copy a shareable preview link"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    {shareState === 'busy' ? 'Copying…' : shareState === 'copied' ? 'Copied!' : shareState === 'failed' ? 'Failed' : 'Share'}
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div className="absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                    <button
+                      onClick={shareAdPreview}
+                      className="w-full px-4 py-2.5 text-sm text-left text-gray-700 hover:bg-blue-50"
+                    >
+                      <span className="font-medium">View-only link</span>
+                      <span className="block text-xs text-gray-400 mt-0.5">Recipients can look and export, not edit</span>
+                    </button>
+                    <button
+                      onClick={shareEditableLink}
+                      className="w-full px-4 py-2.5 text-sm text-left text-gray-700 hover:bg-blue-50 border-t border-gray-100"
+                    >
+                      <span className="font-medium">Editable link</span>
+                      <span className="block text-xs text-gray-400 mt-0.5">Recipients edit with their email; saves sync to your sheet</span>
+                    </button>
+                  </div>
+                </div>
               )}
+              {/* Auto-fill from Google Sheet/Doc */}
+              <button
+                onClick={() => { setDocImportError(''); setDocImportOpen(true); }}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white hover:shadow-md transition-all duration-300 card-hover"
+                title="Auto-fill the preview from a Google Sheet or Doc link"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#188038" d="M19 13v6c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h6v4c0 1.1.9 2 2 2h4z"/>
+                  <path fill="#34A853" d="M15 3l4 4h-4V3z"/>
+                  <path fill="#fff" d="M8 12h8v1.4H8zm0 2.8h8v1.4H8zm0 2.8h5.5V19H8z"/>
+                </svg>
+                Auto-Fill
+              </button>
               {/* Import */}
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -4110,6 +4441,40 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {/* Collab mode: sticky save bar for editable share links */}
+      {collabId && (
+        <div className="bg-indigo-600 text-white shadow-lg sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm">
+              <span className="font-semibold">Editing a shared ad</span>
+              <span className="opacity-80"> as {collabEmail}</span>
+              {collabInfo?.lastEditor && (
+                <span className="opacity-60"> · last saved by {collabInfo.lastEditor}</span>
+              )}
+            </p>
+            <button
+              onClick={saveCollabEdits}
+              disabled={collabSaveState === 'busy'}
+              className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-300 disabled:opacity-70 ${
+                collabSaveState === 'saved'
+                  ? 'bg-green-500 text-white'
+                  : collabSaveState === 'failed'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-white text-indigo-700 hover:bg-indigo-50 shadow'
+              }`}
+            >
+              {collabSaveState === 'busy'
+                ? 'Saving…'
+                : collabSaveState === 'saved'
+                ? 'Saved ✓'
+                : collabSaveState === 'failed'
+                ? 'Save failed'
+                : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Platform Tabs */}
       <div className="glass-dark border-b border-white/10 shadow-lg">

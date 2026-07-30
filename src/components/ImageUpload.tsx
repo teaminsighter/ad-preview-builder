@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { normalizeMediaUrl } from '@/lib/driveLink';
 
 interface ImageUploadProps {
   value: string;
@@ -59,8 +60,8 @@ export default function ImageUpload({
       <input
         type="url"
         value={value.startsWith('data:') ? '' : value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Paste image URL or upload below"
+        onChange={(e) => onChange(normalizeMediaUrl(e.target.value))}
+        placeholder="Paste image URL or Google Drive link"
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-2"
       />
 

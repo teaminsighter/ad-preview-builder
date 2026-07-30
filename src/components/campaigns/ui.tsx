@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Render a DOM node to a PNG data URL. Uses html-to-image's toSvg (which handles
 // Tailwind v4's oklch colors) plus manual canvas rasterization — toPng's internal
@@ -317,15 +317,36 @@ function PhoneSkeletonRows({ rows = 4 }: { rows?: number }) {
 }
 
 // Phone frame wrapper around ad previews, matching Google Ads' official
-// mockup: a tall fixed-height phone — skeleton content fills the screen
-// below the ad so short ads don't squash the device into a "tablet".
-// contentWidth is the preview's natural pixel width; content is zoomed to fit.
+// mockup: a tall fixed-height phone with skeleton content around the ad.
+// The screen never scrolls — the ad is auto-scaled to fit, so mouse-wheel
+// scrolling of the page is never hijacked by the mockup. contentWidth is
+// the preview's natural pixel width.
 export function PhoneFrame({ children, contentWidth = 302 }: { children: React.ReactNode; contentWidth?: number }) {
-  const zoom = Math.min(1, 302 / contentWidth);
+  const measureRef = useRef<HTMLDivElement>(null);
+  // Ad area inside the 620px screen, between status bar and skeleton rows
+  const MAX_W = 302;
+  const MAX_H = 440;
+  const [box, setBox] = useState({ scale: Math.min(1, MAX_W / contentWidth), height: 300 });
+
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    const update = () => {
+      const natural = el.offsetHeight || 1;
+      const widthScale = Math.min(1, MAX_W / contentWidth);
+      const scale = Math.min(widthScale, MAX_H / natural);
+      setBox({ scale, height: Math.min(natural * scale, MAX_H) });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [contentWidth]);
+
   return (
     <div className="mx-auto w-fit">
       <div className="rounded-[2.2rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl overflow-hidden">
-        <div className="bg-white relative flex flex-col h-[620px] w-[330px]">
+        <div className="bg-white relative flex flex-col h-[620px] w-[330px] overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-gray-900 rounded-b-2xl z-10" />
           {/* status bar */}
           <div className="pt-7 pb-1 px-5 flex items-center justify-between" aria-hidden>
@@ -336,9 +357,13 @@ export function PhoneFrame({ children, contentWidth = 302 }: { children: React.R
               <div className="h-2 w-4 bg-gray-300 rounded-sm" />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden pb-3 px-[14px]">
+          <div className="flex-1 overflow-hidden pb-3 px-[14px]">
             <PhoneSkeletonRows rows={1} />
-            <div className="mt-4" style={{ zoom }}>{children}</div>
+            <div className="mt-4 mx-auto overflow-hidden" style={{ height: box.height, width: Math.min(contentWidth * box.scale, MAX_W) }}>
+              <div style={{ transform: `scale(${box.scale})`, transformOrigin: 'top left', width: contentWidth }}>
+                <div ref={measureRef}>{children}</div>
+              </div>
+            </div>
             <PhoneSkeletonRows rows={5} />
           </div>
           {/* home indicator */}

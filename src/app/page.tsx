@@ -306,6 +306,12 @@ export default function Home() {
   const [manageLinksOpen, setManageLinksOpen] = useState(false);
   const [deletingLinkId, setDeletingLinkId] = useState('');
 
+  // Uploaded media stored in the Cloudflare R2 bucket (share videos)
+  const [mediaFiles, setMediaFiles] = useState<{ key: string; size: number; uploaded: number | null }[] | null>(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const [deletingMediaKey, setDeletingMediaKey] = useState('');
+
   // The Google Sheet this ad was auto-filled from (if any). Travels inside
   // editable share links so collab saves can write edits back to the source
   // sheet — that needs the sheet shared with Editor access.
@@ -1515,6 +1521,48 @@ export default function Home() {
       alert('Could not delete the link — this needs the deployed site. Please try again.');
     }
     setDeletingLinkId('');
+  };
+
+  // Storage manager: list / delete media files in the R2 bucket
+  const loadMediaLibrary = async () => {
+    setMediaLoading(true);
+    setMediaError('');
+    try {
+      const res = await fetch('/api/media-library', {
+        headers: authToken ? { 'x-auth': authToken } : undefined,
+      });
+      const out = await res.json().catch(() => null);
+      if (!res.ok || !out?.files) throw new Error(out?.message || out?.error || 'list_failed');
+      setMediaFiles(out.files);
+    } catch {
+      setMediaFiles([]);
+      setMediaError('Could not load storage — this works on the deployed site.');
+    }
+    setMediaLoading(false);
+  };
+
+  const openManageModal = () => {
+    setManageLinksOpen(true);
+    loadMediaLibrary();
+  };
+
+  const deleteMediaFile = async (mediaKey: string) => {
+    if (deletingMediaKey) return;
+    if (!confirm('Delete this file from Cloudflare storage?\n\nAny share link that uses it will show the video as missing.')) return;
+    setDeletingMediaKey(mediaKey);
+    try {
+      const res = await fetch(`/api/media-library?key=${encodeURIComponent(mediaKey)}`, {
+        method: 'DELETE',
+        headers: authToken ? { 'x-auth': authToken } : undefined,
+      });
+      const out = await res.json().catch(() => null);
+      if (!res.ok || !out?.ok) throw new Error(out?.message || out?.error || 'delete_failed');
+      setMediaFiles((prev) => (prev ? prev.filter((f) => f.key !== mediaKey) : prev));
+    } catch (error) {
+      console.error('Delete media failed:', error);
+      alert('Could not delete the file — please try again on the deployed site.');
+    }
+    setDeletingMediaKey('');
   };
 
   // Save collab edits back to the server copy (and onwards to the sheet)
@@ -4257,15 +4305,16 @@ export default function Home() {
             className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-gray-900">Editable links</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Links &amp; storage</h3>
             <p className="text-sm text-gray-500 mt-1">
-              Links created on this browser. Deleting removes the stored ad from Cloudflare —
-              the link stops working for everyone immediately. Master-sheet rows stay as history.
+              Everything your shares keep on Cloudflare — delete it here instead of the R2 dashboard.
             </p>
+
+            <h4 className="text-sm font-semibold text-gray-800 mt-5">Editable links</h4>
             {editableLinks.length === 0 ? (
-              <p className="text-sm text-gray-400 mt-6 mb-2 text-center">No editable links yet — create one from Share → Editable link.</p>
+              <p className="text-sm text-gray-400 mt-2 text-center">No editable links yet — create one from Share → Editable link.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-gray-100">
+              <ul className="mt-1 divide-y divide-gray-100">
                 {editableLinks.map((l) => (
                   <li key={l.id} className="py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
@@ -4286,6 +4335,55 @@ export default function Home() {
                       title="Delete from Cloudflare"
                     >
                       {deletingLinkId === l.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <h4 className="text-sm font-semibold text-gray-800 mt-6 flex items-center justify-between">
+              Uploaded media in Cloudflare
+              <button
+                onClick={loadMediaLibrary}
+                disabled={mediaLoading}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              >
+                {mediaLoading ? 'Loading…' : 'Refresh'}
+              </button>
+            </h4>
+            {mediaError && <p className="text-sm text-red-600 mt-2">{mediaError}</p>}
+            {!mediaError && mediaFiles !== null && mediaFiles.length === 0 && !mediaLoading && (
+              <p className="text-sm text-gray-400 mt-2 text-center">No uploaded videos in storage. 🎉</p>
+            )}
+            {!!mediaFiles?.length && (
+              <ul className="mt-1 divide-y divide-gray-100">
+                {mediaFiles.map((f) => (
+                  <li key={f.key} className="py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate" title={f.key}>
+                        {f.key.slice(0, 10)}…{f.key.slice(f.key.lastIndexOf('.'))}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {(f.size / (1024 * 1024)).toFixed(1)} MB
+                        {f.uploaded ? ` · ${new Date(f.uploaded).toLocaleDateString()}` : ''}
+                      </p>
+                    </div>
+                    <a
+                      href={`/media/${f.key}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200"
+                      title="Open file"
+                    >
+                      View
+                    </a>
+                    <button
+                      onClick={() => deleteMediaFile(f.key)}
+                      disabled={deletingMediaKey === f.key}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50"
+                      title="Delete from Cloudflare"
+                    >
+                      {deletingMediaKey === f.key ? 'Deleting…' : 'Delete'}
                     </button>
                   </li>
                 ))}
@@ -4428,11 +4526,11 @@ export default function Home() {
                       <span className="block text-xs text-gray-400 mt-0.5">Recipients edit with their email; saves sync to your sheet</span>
                     </button>
                     <button
-                      onClick={() => setManageLinksOpen(true)}
+                      onClick={openManageModal}
                       className="w-full px-4 py-2.5 text-sm text-left text-gray-700 hover:bg-red-50 border-t border-gray-100"
                     >
-                      <span className="font-medium">Manage editable links{editableLinks.length ? ` (${editableLinks.length})` : ''}</span>
-                      <span className="block text-xs text-gray-400 mt-0.5">Copy again or delete from Cloudflare storage</span>
+                      <span className="font-medium">Manage links &amp; storage{editableLinks.length ? ` (${editableLinks.length})` : ''}</span>
+                      <span className="block text-xs text-gray-400 mt-0.5">Delete editable links and uploaded videos from Cloudflare</span>
                     </button>
                   </div>
                 </div>

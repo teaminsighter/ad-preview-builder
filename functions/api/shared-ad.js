@@ -50,9 +50,28 @@ const sheetValues = (data) => ({
   'Page / Business': data.pageName || data.businessName || '',
 });
 
+// Structured (unjoined) field values — used by the webhook to write edits
+// back onto the source sheet's own labels
+const structuredFields = (data) => ({
+  platform: data.platform || '',
+  adName: data.metaAdName || '',
+  pageName: data.pageName || '',
+  businessName: data.businessName || '',
+  instagram: data.instagramAccount || '',
+  primaryTexts: Array.isArray(data.primaryTexts) ? data.primaryTexts : [],
+  headlines: (data.headlines?.some?.((h) => h) ? data.headlines : data.metaHeadlines) || [],
+  descriptions: (data.descriptions?.some?.((d) => d) ? data.descriptions : [data.metaDescription]) || [],
+  cta: data.metaCtaText || data.ctaText || '',
+  finalUrl: data.finalUrl || data.metaDestinationUrl || '',
+  displayUrl: data.displayUrl || '',
+  path1: data.path1 || '',
+  path2: data.path2 || '',
+  phone: data.phoneNumber || '',
+});
+
 const pushToSheet = async (env, id, email, data, shareUrl) => {
   const webhook = getEnv(env, 'SHEET_WEBHOOK_URL');
-  if (!webhook) return 'not_configured';
+  if (!webhook) return { status: 'not_configured' };
   try {
     const res = await fetch(webhook, {
       method: 'POST',
@@ -63,12 +82,18 @@ const pushToSheet = async (env, id, email, data, shareUrl) => {
         editedAt: new Date().toISOString(),
         shareUrl,
         values: sheetValues(data),
+        fields: structuredFields(data),
+        sourceSheet: data.sourceSheet && data.sourceSheet.id ? data.sourceSheet : null,
       }),
       redirect: 'follow', // Apps Script replies via a 302 to googleusercontent
     });
-    return res.ok ? 'synced' : 'failed';
+    let body = null;
+    try {
+      body = await res.json();
+    } catch { /* Apps Script sometimes redirects to HTML — status alone still tells us it ran */ }
+    return { status: res.ok ? 'synced' : 'failed', sourceSheet: body?.sourceSheet };
   } catch {
-    return 'failed';
+    return { status: 'failed' };
   }
 };
 
@@ -142,5 +167,5 @@ export async function onRequestPut({ request, env }) {
 
   const shareUrl = `${new URL(request.url).origin}/#e=${id}`;
   const sheet = await pushToSheet(env, id, email, body.data, shareUrl);
-  return json({ ok: true, sheet });
+  return json({ ok: true, sheet: sheet.status, sourceSheet: sheet.sourceSheet });
 }

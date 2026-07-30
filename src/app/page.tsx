@@ -299,6 +299,11 @@ export default function Home() {
   const [collabInfo, setCollabInfo] = useState<{ lastEditor: string | null; editCount: number } | null>(null);
   const [collabLoadError, setCollabLoadError] = useState('');
 
+  // The Google Sheet this ad was auto-filled from (if any). Travels inside
+  // editable share links so collab saves can write edits back to the source
+  // sheet — that needs the sheet shared with Editor access.
+  const [sourceSheet, setSourceSheet] = useState<{ id: string; gid?: string } | null>(null);
+
   // Auto-fill from a Google Sheet/Doc link or an uploaded file
   const [docImportOpen, setDocImportOpen] = useState(false);
   const [docImportUrl, setDocImportUrl] = useState('');
@@ -936,6 +941,7 @@ export default function Home() {
     textGeneration,
     optimizeTextPerPerson,
     lifecycleStrategy,
+    sourceSheet,
   });
 
   // Save to localStorage
@@ -1050,6 +1056,7 @@ export default function Home() {
     if (data.textGeneration !== undefined) setTextGeneration(data.textGeneration as boolean);
     if (data.optimizeTextPerPerson !== undefined) setOptimizeTextPerPerson(data.optimizeTextPerPerson as boolean);
     if (data.lifecycleStrategy) setLifecycleStrategy(data.lifecycleStrategy as 'all' | 'new-customers');
+    if (data.sourceSheet) setSourceSheet(data.sourceSheet as { id: string; gid?: string });
   };
 
   // Export to CSV
@@ -1483,6 +1490,8 @@ export default function Home() {
       setTimeout(() => setCollabSaveState('idle'), 2500);
       if (out.sheet === 'failed') {
         alert('Your changes were saved, but updating the Google Sheet failed — the owner may need to check the SHEET_WEBHOOK_URL setup.');
+      } else if (out.sourceSheet === 'no_access') {
+        alert('Changes saved! But the original source sheet could not be updated — its owner needs to share it as “Anyone with the link – Editor” (or give the master account edit access).');
       }
     } catch (error) {
       console.error('Collab save failed:', error);
@@ -1529,6 +1538,11 @@ export default function Home() {
       }
       const { data, filled } = parseImportedDoc(kind, text);
       loadAdData(data);
+      // Remember the source sheet so collab edits can be written back to it
+      const sheetId = link.match(/spreadsheets\/d\/([\w-]+)/);
+      setSourceSheet(kind === 'sheet' && sheetId
+        ? { id: sheetId[1], gid: (link.match(/[#?&]gid=(\d+)/) || [])[1] }
+        : null);
       setDocImportOpen(false);
       setDocImportUrl('');
       alert(`Auto-filled from your ${kind === 'sheet' ? 'Sheet' : 'Doc'}:\n\n• ${filled.join('\n• ')}`);
@@ -1546,6 +1560,7 @@ export default function Home() {
     try {
       const { data, filled } = await parseImportedFile(file);
       loadAdData(data);
+      setSourceSheet(null);
       setDocImportOpen(false);
       setDocImportUrl('');
       alert(`Auto-filled from ${file.name}:\n\n• ${filled.join('\n• ')}`);
@@ -1659,7 +1674,7 @@ export default function Home() {
       imageUrl, logoUrl, ctaText, displaySize, username, caption, headline, description, metaImageUrl,
       tiktokMediaUrl, tiktokMediaKind, tiktokCta,
       bingAdType, bingFinalUrl, bingPath1, bingPath2, bingHeadlines, bingDescriptions,
-      bingBusinessName, bingShortHeadline, bingLongHeadline, bingText, bingImageUrl]);
+      bingBusinessName, bingShortHeadline, bingLongHeadline, bingText, bingImageUrl, sourceSheet]);
 
   const renderGoogleEditor = () => {
     switch (googleAdType) {

@@ -30,6 +30,7 @@ function doPost(e) {
     if (!payload || !payload.id || !payload.email) throw new Error('bad payload');
     upsertLatestCopy_(payload);
     appendEditLog_(payload);
+    out.sourceSheet = updateSourceSheet_(payload);
     out.ok = true;
   } catch (err) {
     out.error = String(err && err.message ? err.message : err);
@@ -100,6 +101,139 @@ function appendEditLog_(payload) {
     payload.email,
     payload.shareUrl || '',
   ]);
+}
+
+// ---- Source-sheet write-back --------------------------------------------
+// When the ad was auto-filled from a Google Sheet, collab saves carry that
+// sheet's id/gid plus structured field values. If this account can edit the
+// sheet (shared as "Anyone with the link – Editor" or directly with this
+// account), the edited values are written back onto its own labels.
+
+var WRITEBACK_LABELS = {
+  platform: 'platform',
+  pagename: 'pageName', facebookpage: 'pageName', fbpage: 'pageName', page: 'pageName',
+  businessname: 'businessName', brandname: 'businessName', brand: 'businessName',
+  company: 'businessName', companyname: 'businessName',
+  instagramaccount: 'instagram', instagram: 'instagram', igaccount: 'instagram', ighandle: 'instagram',
+  adname: 'adName',
+  primarytext: 'primaryTexts', primarytexts: 'primaryTexts', bodytext: 'primaryTexts',
+  body: 'primaryTexts', adcopy: 'primaryTexts', copy: 'primaryTexts', text: 'primaryTexts',
+  headline: 'headlines', headlines: 'headlines', title: 'headlines',
+  description: 'descriptions', descriptions: 'descriptions', desc: 'descriptions',
+  cta: 'cta', calltoaction: 'cta', ctabutton: 'cta', button: 'cta', buttontext: 'cta',
+  finalurl: 'finalUrl', landingpage: 'finalUrl', landingpageurl: 'finalUrl',
+  websiteurl: 'finalUrl', website: 'finalUrl', destinationurl: 'finalUrl',
+  url: 'finalUrl', link: 'finalUrl', linkurl: 'finalUrl',
+  displayurl: 'displayUrl', displaylink: 'displayUrl',
+  path: 'path', displaypath: 'path',
+  phone: 'phone', phonenumber: 'phone',
+};
+
+function splitWritebackLabel_(raw) {
+  var norm = String(raw || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  if (!norm || norm.length > 40) return null;
+  var m = norm.match(/^([a-z]+?)(\d+)?$/);
+  if (!m) return null;
+  var field = WRITEBACK_LABELS[m[1]] || WRITEBACK_LABELS[norm];
+  if (!field) return null;
+  return { field: field, idx: m[2] ? parseInt(m[2], 10) : null };
+}
+
+function writebackValue_(fields, lab) {
+  if (lab.field === 'path') {
+    return fields[lab.idx === 2 ? 'path2' : 'path1'];
+  }
+  var v = fields[lab.field];
+  if (v === undefined || v === null) return null;
+  if (Object.prototype.toString.call(v) === '[object Array]') {
+    return v[(lab.idx || 1) - 1] || '';
+  }
+  return lab.idx && lab.idx > 1 ? null : v;
+}
+
+function updateSourceSheet_(payload) {
+  if (!payload.sourceSheet || !payload.sourceSheet.id || !payload.fields) return 'none';
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(payload.sourceSheet.id);
+  } catch (e) {
+    return 'no_access';
+  }
+  var sheet = null;
+  if (payload.sourceSheet.gid != null && payload.sourceSheet.gid !== '') {
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      if (String(sheets[i].getSheetId()) === String(payload.sourceSheet.gid)) sheet = sheets[i];
+    }
+  }
+  if (!sheet) sheet = ss.getSheets()[0];
+  try {
+    return writeBack_(sheet, payload.fields) ? 'updated' : 'no_labels';
+  } catch (e) {
+    return 'no_access';
+  }
+}
+
+function writeBack_(sheet, fields) {
+  var lastRow = Math.min(sheet.getLastRow(), 200);
+  var lastCol = Math.min(sheet.getLastColumn(), 30);
+  if (!lastRow || !lastCol) return false;
+  var grid = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+
+  var colHits = 0;
+  for (var r = 0; r < lastRow; r++) if (splitWritebackLabel_(grid[r][0])) colHits++;
+  var rowHits = 0;
+  for (var c = 0; c < lastCol; c++) if (splitWritebackLabel_(grid[0][c])) rowHits++;
+  var wrote = false;
+
+  if (colHits >= rowHits && colHits > 0) {
+    // Labels down column A, values in column B. Unnumbered repeated labels
+    // ("Headline" three times) get sequential indexes.
+    var counters = {};
+    for (var r2 = 0; r2 < lastRow; r2++) {
+      var lab = splitWritebackLabel_(grid[r2][0]);
+      if (!lab) continue;
+      if (!lab.idx) {
+        counters[lab.field] = (counters[lab.field] || 0) + 1;
+        lab.idx = counters[lab.field];
+      }
+      var v = writebackValue_(fields, lab);
+      if (v === null || v === undefined) continue;
+      if (String(grid[r2][1]) !== String(v)) {
+        sheet.getRange(r2 + 1, 2).setValue(v);
+      }
+      wrote = true;
+    }
+    return wrote;
+  }
+
+  if (rowHits > 0) {
+    // Header row, values in the rows below. Unnumbered array columns get one
+    // value per row; numbered columns ("Headline 2") get that single value.
+    for (var c2 = 0; c2 < lastCol; c2++) {
+      var lab2 = splitWritebackLabel_(grid[0][c2]);
+      if (!lab2) continue;
+      var val = lab2.field === 'path'
+        ? fields[lab2.idx === 2 ? 'path2' : 'path1']
+        : fields[lab2.field];
+      if (val === undefined || val === null) continue;
+      if (Object.prototype.toString.call(val) === '[object Array]') {
+        if (lab2.idx) {
+          sheet.getRange(2, c2 + 1).setValue(val[lab2.idx - 1] || '');
+        } else {
+          var n = Math.min(Math.max(val.length, 1), 15);
+          for (var r3 = 0; r3 < n; r3++) {
+            sheet.getRange(r3 + 2, c2 + 1).setValue(val[r3] || '');
+          }
+        }
+      } else {
+        sheet.getRange(2, c2 + 1).setValue(val);
+      }
+      wrote = true;
+    }
+    return wrote;
+  }
+  return false;
 }
 
 /**
